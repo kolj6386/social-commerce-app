@@ -14,7 +14,7 @@
 /coverage
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
@@ -39,3 +39,53 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Build artifacts
+bin/
+obj/
+
+# User-specific files
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.cache
+*.vs/
+*.swp
+
+# Logs & Debugging
+*.log
+logs/
+
+# Environment variables & Secrets
+appsettings.*.json
+appsettings.Development.json
+.env
+secrets.json
+appsettings.json
+# ASP.NET Publish
+publish/
+wwwroot/
+
+# Entity Framework Migrations
+Migrations/
+
+# Rider / JetBrains
+.idea/
+*.iml
+
+# Node.js (if using a frontend)
+node_modules/
+dist/
+
+# Docker & CI/CD
+docker-compose.override.yml
+.DS_Store
+
+# NuGet
+*.nupkg
+.nuget/
+
+# Coverage reports
+coverage/
+*.coverage
