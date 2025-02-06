@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using backend.Helpers;
 using backend.Interfaces;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -27,6 +28,17 @@ namespace backend.Controllers
             _logger.LogInformation("Fetching all content from the database"); // ✅ Logs in console
             var content = await _contentRepo.GetAllAsync(queryObject);
             _logger.LogInformation($"Retrieved {content.Count} items");
+            return Ok(content);
+        }
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById([FromRoute] int id) {
+            var content = await _contentRepo.GetById(id);
+
+            if (content == null) {
+                return NotFound();
+            }
+
             return Ok(content);
         }
         

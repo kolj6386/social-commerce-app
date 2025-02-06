@@ -52,6 +52,7 @@ builder.Services.AddDbContext<ApplicationDBContext>(options =>
 
 // Wiring up the services 
 builder.Services.AddScoped<IContentRepository, ContentRepository>();
+builder.Services.AddScoped<IReactionRepository, ReactionRepository>();
 
 
 var app = builder.Build();

@@ -13,16 +13,33 @@ namespace backend.Repository
     public class ContentRepository : IContentRepository
     {
         private readonly ApplicationDBContext _context;
-        private readonly ILogger<ContentRepository> _logger;
-        public ContentRepository(ApplicationDBContext context, ILogger<ContentRepository> logger)
+        public ContentRepository(ApplicationDBContext context)
         {
             _context = context;
-            _logger = logger;
         }
         public async Task<List<Content>> GetAllAsync(ContentQueryObject queryObject)
         {
-            _logger.LogInformation("fetching from inside repository");
             return await _context.Contents.ToListAsync();
+        }
+
+        public async Task<Content?> GetById(int id)
+        {
+            return await _context.Contents.FirstOrDefaultAsync(c => c.Id == id);
+        }
+
+        public async Task<Content?> UpdateAsync(Content content)
+        {
+            var existingStock = await _context.Contents.FirstOrDefaultAsync(x => x.Id == content.Id);
+
+            if (existingStock == null) {
+                return null;
+            }
+
+            existingStock.Reactions = content.Reactions;
+
+            await _context.SaveChangesAsync();
+            return existingStock;
+
         }
     }
 }

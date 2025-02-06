@@ -17,6 +17,7 @@ namespace backend.Data
         }
 
         public DbSet<Content> Contents {get; set;}
+        public DbSet<Reaction> Reactions {get; set;}
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -31,7 +32,8 @@ namespace backend.Data
                 postContent = "This is an awesome view!",
                 postMedia = new List<string> {"/image1.jpg", "image2.jpg"},
                 postCreated = 173,
-                postViews =  200
+                postViews =  200,
+                Reactions = []
                 }
             );
         }

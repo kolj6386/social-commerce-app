@@ -10,5 +10,8 @@ namespace backend.Interfaces
     public interface IContentRepository
     {
         Task<List<Content>> GetAllAsync(ContentQueryObject queryObject);
+
+        Task<Content?> UpdateAsync(Content content);
+        Task<Content?> GetById(int id);
     }
 }
