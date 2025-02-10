@@ -16,24 +16,27 @@ namespace backend.Data
 
         }
 
-        public DbSet<Content> Contents {get; set;}
-        public DbSet<Reaction> Reactions {get; set;}
+        public DbSet<Post> Posts {get; set;}
+        public DbSet<PostReaction> PostReactions {get; set;}
+        public DbSet<Comment> Comments { get; set; }
+        public DbSet<User> Accounts { get; set; }
+        public DbSet<CommentReaction> CommentReactions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            builder.Entity<Content>().HasData(
-                new Content {
+            builder.Entity<Post>().HasData(
+                new Post {
                 Id = 1, 
-                firstName = "John", 
-                lastName = "Doe", 
-                postComments = new List<string> { "First comment!", "Nice post!" },
-                postContent = "This is an awesome view!",
-                postMedia = new List<string> {"/image1.jpg", "image2.jpg"},
-                postCreated = 173,
-                postViews =  200,
-                Reactions = []
+                ProductId = 112223344, 
+                UserId = 1,
+                FirstName = "jesse",
+                LastName = "k",
+                PostContent = "seeded post data",
+                PostCreated = DateTime.Now,
+                PostMedia = new List<string> {"/image1.jpg", "image2.jpg"},
+                PostViews = 100
                 }
             );
         }

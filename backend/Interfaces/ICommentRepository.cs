@@ -7,8 +7,9 @@ using backend.Models;
 
 namespace backend.Interfaces
 {
-    public interface IReactionRepository
+    public interface ICommentRepository
     {
-        Task<PostReaction> CreateReactionAsync(PostReaction reactionModel);
+        Task<Comment> CreateCommentOnPost(Comment Comment);
+        Task<Comment?> DeleteCommentAsync(DeleteCommentQueryObject queryObject);
     }
 }

@@ -14,48 +14,24 @@ namespace backend.Repository
     public class ReactionRepository : IReactionRepository
     {
 
-        private IContentRepository _contentRepo;
+        private IPostRepository _postRepo;
         private readonly ApplicationDBContext _context;
 
-        public ReactionRepository(IContentRepository contentRepo, ApplicationDBContext context)
+        public ReactionRepository(IPostRepository postRepo, ApplicationDBContext context)
         {
-            _contentRepo = contentRepo;
+            _postRepo = postRepo;
             _context = context;
         }
 
-        public async Task<Reaction> CreateReactionAsync(Reaction reactionModel)
+        public async Task<PostReaction> CreateReactionAsync(PostReaction reactionModel)
         {
-            // This needs to just do something simple. 
-            // Add the reaction model
-            // save the changes 
-            /*
-                public async Task<Comment> CreateAsync(Comment commentModel)
-                {
-                    await _context.Comments.AddAsync(commentModel);
-                    await _context.SaveChangesAsync();
-                    return commentModel;
-                }
-            */
-            await _context.Reactions.AddAsync(reactionModel);
+            // need to insert the reaction into our table 
+            await _context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO Reactions (UserId, PostId, Type) VALUES ({0}, {1}, {2})",
+                reactionModel.UserId, reactionModel.PostId, reactionModel.Type
+            );
             await _context.SaveChangesAsync();
             return reactionModel;
-
-            // var content = await _context.Contents.FirstOrDefaultAsync(c => c.Id == queryObject.PostId);
-
-            // if (content == null) {
-            //     return null;
-            // }
-
-            // var newReaction = new Reaction
-            // {
-            //     PostId = queryObject.PostId,
-            //     Type = queryObject.Type,
-            //     CreatedAt = DateTime.UtcNow
-            // };
-
-            // await _context.SaveChangesAsync();
-
-            // return newReaction;
         }
     }
 }

@@ -51,8 +51,9 @@ builder.Services.AddDbContext<ApplicationDBContext>(options =>
 });
 
 // Wiring up the services 
-builder.Services.AddScoped<IContentRepository, ContentRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IReactionRepository, ReactionRepository>();
+builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 
 
 var app = builder.Build();

@@ -10,11 +10,11 @@ namespace backend.Mappers
 {
     public static class ReactionMapper
     {
-        public static Reaction ToReactionFromCreate(this CreateReactionDto reactionDto, ReactionQueryObject queryObject) {
-            return new Reaction {
-                AnonymousId = 1,
+        public static PostReaction ToReactionFromCreate(this CreateReactionDto reactionDto, ReactionQueryObject queryObject) {
+            return new PostReaction {
                 Type = queryObject.Type,
-                PostId = queryObject.PostId
+                PostId = queryObject.PostId,
+                UserId = queryObject.UserId,
             };
         }
     }

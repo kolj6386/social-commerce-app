@@ -9,5 +9,7 @@ namespace backend.Helpers
     {
         public int? Id {get; set;}
         public string? Type {get; set;}
+        public int? PageNumber { get; set; }
+        public int? ResultsPerPage {get; set;}
     }
 }
