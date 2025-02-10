@@ -64,13 +64,18 @@ namespace backend.Repository
                     c.Content AS CommentContent,
                     c.CreatedAt AS CommentCreated,
                     
-                    pr.Type AS PostReactionType,  
-                    cr.Type AS CommentReactionType
+                    STRING_AGG(pr.Type, ',') AS PostReactionType,  
+                    STRING_AGG(cr.Type, ',') AS CommentReactionType
 
                 FROM Posts p
                 LEFT JOIN Comments c ON p.Id = c.PostId
                 LEFT JOIN PostReactions pr ON p.Id = pr.PostId  
                 LEFT JOIN CommentReactions cr ON c.Id = cr.CommentId
+
+                GROUP BY 
+                p.Id, p.UserId, p.FirstName, p.LastName, p.PostContent, 
+                p.PostCreated, p.PostViews, p.PostMedia,
+                c.Id, c.UserId, c.Content, c.CreatedAt
 
                 ORDER BY p.PostCreated DESC
                 OFFSET @PageNumber ROWS FETCH NEXT @PageSize ROWS ONLY",
@@ -89,26 +94,18 @@ namespace backend.Repository
                 PostViews = postGroup.First().PostViews,
                 PostMedia = postGroup.First().PostMedia.Split(',').ToList(),
 
-                Reactions = postGroup
-                    .Where(p => !string.IsNullOrEmpty(p.PostReactionType))
-                    .Select(p => p.PostReactionType)
-                    .Distinct()
-                    .ToList(),
+                Reactions = postGroup.First().PostReactionType?.Split(',').ToList() ?? new List<string>(),
 
                 Comments = postGroup
                     .Where(p => p.CommentId.HasValue)
                     .GroupBy(c => c.CommentId)
                     .Select(commentGroup => new CommentDto
                     {
-                        Id = commentGroup.Key.Value,
-                        UserId = commentGroup.First().CommentUserId.Value,
-                        Content = commentGroup.First().CommentContent,
-                        CreatedAt = commentGroup.First().CommentCreated.Value,
-                        Reactions = commentGroup
-                            .Where(c => !string.IsNullOrEmpty(c.CommentReactionType))
-                            .Select(c => c.CommentReactionType)
-                            .Distinct()
-                            .ToList()
+                        Id = commentGroup.Key.HasValue ? commentGroup.Key.Value : 0,
+                        UserId = commentGroup.FirstOrDefault()?.CommentUserId ?? default(int),
+                        Content = commentGroup.FirstOrDefault()?.CommentContent ?? string.Empty,
+                        CreatedAt = commentGroup.FirstOrDefault()?.CommentCreated ?? DateTime.MinValue,
+                        Reactions = commentGroup.First().CommentReactionType?.Split(',').ToList() ?? new List<string>()
                     })
                     .ToList()
             }).ToList();
