@@ -12,4 +12,13 @@ namespace backend.Dtos.Comment
         public DateTime CreatedAt {get; set;}
 
     }
+
+        public class CommentDisplayithReactionsDto
+    {
+        public int CommentId {get; set;}
+        public string CommentContent {get; set;} = string.Empty;
+        public List<string> CommentReactions { get; set; } = new List<string>();
+        public DateTime CreatedAt {get; set;}
+
+    }
 }

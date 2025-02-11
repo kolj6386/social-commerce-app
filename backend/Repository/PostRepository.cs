@@ -83,6 +83,10 @@ namespace backend.Repository
                 new SqlParameter("@PageSize", queryObject.ResultsPerPage)
             ).ToListAsync();
 
+            if (flatPosts == null) {
+                return null;
+            }
+
             var groupedPosts = flatPosts.GroupBy(p => p.PostId).Select(postGroup => new PostWithReactionsAndCommentsDto
             {
                 Id = postGroup.Key,
@@ -113,43 +117,75 @@ namespace backend.Repository
             return groupedPosts;
         }
 
-        public Task<PostWithReactionsAndCommentsDto?> GetById(int id)
+        public async Task<PostWithReactionsAndCommentsDto?> GetById(int id)
         {
-            throw new NotImplementedException();
+            var flatPost = await _context.Database.SqlQueryRaw<SinglePostWithCommentWithReactionsFlatDto>(
+                @"
+                SELECT 
+                    p.Id AS PostId, 
+                    p.UserId AS PostUserId,
+                    p.FirstName, 
+                    p.LastName, 
+                    p.PostContent, 
+                    p.PostCreated, 
+                    p.PostViews, 
+                    p.PostMedia,
+                    
+                    c.Id AS CommentId,
+                    c.UserId AS CommentUserId,
+                    c.Content AS CommentContent,
+                    c.CreatedAt AS CommentCreated,
+                    
+                    STRING_AGG(pr.Type, ',') AS PostReactionType,  
+                    STRING_AGG(cr.Type, ',') AS CommentReactionType
+
+                FROM Posts p
+                LEFT JOIN Comments c ON p.Id = c.PostId
+                LEFT JOIN PostReactions pr ON p.Id = pr.PostId  
+                LEFT JOIN CommentReactions cr ON c.Id = cr.CommentId
+
+                WHERE p.Id = @PostId
+
+                GROUP BY 
+                p.Id, p.UserId, p.FirstName, p.LastName, p.PostContent, 
+                p.PostCreated, p.PostViews, p.PostMedia,
+                c.Id, c.UserId, c.Content, c.CreatedAt",
+                new SqlParameter("@PostId", id)
+            ).ToListAsync();
+
+            if (flatPost == null) {
+                return null;
+            }
+
+            var post = flatPost.GroupBy(p => p.PostId).Select(postGroup => new PostWithReactionsAndCommentsDto
+            {
+                Id = postGroup.Key,
+                UserId = postGroup.First().PostUserId,
+                FirstName = postGroup.First().FirstName,
+                LastName = postGroup.First().LastName,
+                PostContent = postGroup.First().PostContent,
+                PostCreated = postGroup.First().PostCreated,
+                PostViews = postGroup.First().PostViews,
+                PostMedia = postGroup.First().PostMedia.Split(',').ToList(),
+
+                Reactions = postGroup.First().PostReactionType?.Split(',').ToList() ?? new List<string>(),
+
+                Comments = postGroup
+                    .Where(p => p.CommentId.HasValue)
+                    .GroupBy(c => c.CommentId)
+                    .Select(commentGroup => new CommentDto
+                    {
+                        Id = commentGroup.Key.HasValue ? commentGroup.Key.Value : 0,
+                        UserId = commentGroup.FirstOrDefault()?.CommentUserId ?? default(int),
+                        Content = commentGroup.FirstOrDefault()?.CommentContent ?? string.Empty,
+                        CreatedAt = commentGroup.FirstOrDefault()?.CommentCreated ?? DateTime.MinValue,
+                        Reactions = commentGroup.First().CommentReactionType?.Split(',').ToList() ?? new List<string>()
+                    })
+                    .ToList()
+            }).ToList();
+
+            return post.FirstOrDefault();
         }
-
-
-        // public async Task<PostWithReactionsAndCommentsDto?> GetById(int id)
-        // {
-        //     var post = await _context.Posts.FromSqlRaw("SELECT * FROM Posts WHERE Id = {0}", id).FirstOrDefaultAsync();
-
-        //     if (post == null) {
-        //         return null;
-        //     }
-
-        //     // Does not matter if this is null as there could be no reactions
-        //     var reactions = await _context.Reactions
-        //     .FromSqlRaw("SELECT * FROM REACTIONS WHERE PostId = {0}", id).ToListAsync();
-
-        //     var comments = await _context.Comments.FromSqlRaw("SELECT * FROM Comments WHERE PostId = {0}", id).ToListAsync();
-
-        //     return new PostWithReactionsAndCommentsDto {
-        //         Id = post.Id,
-        //         ProductId = post.ProductId,
-        //         FirstName = post.FirstName,
-        //         LastName = post.LastName,
-        //         PostContent = post.PostContent,
-        //         PostCreated = post.PostCreated,
-        //         PostMedia = post.PostMedia,
-        //         PostViews = post.PostViews,
-        //         Reactions = reactions.Select(reaction => reaction.Type).ToList(),
-        //         Comments = comments.Select(comment => new CommentDisplayDto {
-        //             CommentId = comment.Id,
-        //             CommentContent = comment.Content,
-        //             CreatedAt = comment.CreatedAt
-        //         }).ToList()
-        //     };
-        // }
 
         public async Task<Post?> UpdateAsync(Post content)
         {
