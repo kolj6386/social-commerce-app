@@ -23,20 +23,57 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-        [Route("{id:int}")]
-        public async Task<IActionResult> CreateReaction([FromQuery]ReactionQueryObject queryObject, CreateReactionDto reactionDto) {
-            // Need to get the comment from the content repository 
-            var post = await _postRepo.GetById(queryObject.PostId);
+        public async Task<IActionResult> CreateReactionOnPost([FromBody] CreateReactionDto reactionDto) {
 
-            if (post == null ) {
+            var reactionModel = reactionDto.ToReactionFromCreate();
+            // Repository handles the database updates - so updating in here
+            var success = await _reactionRepo.CreateReactionOnPostAsync(reactionModel);
+            if (!success)
+            {
                 return BadRequest("Post does not exist");
             }
 
-            var reactionModel = reactionDto.ToReactionFromCreate(queryObject);
-            // Repository handles the database updates - so updating in here
-            await _reactionRepo.CreateReactionAsync(reactionModel);
+            return Ok($"Reaction added to post id: {reactionDto.PostId}");
+        }        
+        
+        [HttpPost("comment-reaction")]
+        public async Task<IActionResult> CreateReactionOnComment([FromBody] CreateCommentReactionDto commentReactionDto) {
 
-            return Ok($"Reaction added to post id: {queryObject.PostId}");
+            var commentReactionModel = commentReactionDto.ToCommentReactionFromCreate();
+            var success = await _reactionRepo.CreateReactionOnCommentAsync(commentReactionModel); 
+
+            if (!success)
+            {
+                return BadRequest("Comment does not exist");
+            }
+
+            return Ok($"Reaction added to post id: {commentReactionDto.CommentId}");
+
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeletePostReaction([FromBody] DeleteReactionDto reactionDto) {
+            var postReactionDeleteModel = reactionDto.ToReactionFromDelete();
+            var success = await _reactionRepo.DeleteReactionOnPostAsync(postReactionDeleteModel);
+
+            if (!success) {
+                return BadRequest("Could not delete Reaction on Post, Post may not exist");
+            }
+
+            return Ok($"Reaction deleted on post id: {reactionDto.PostId}");
+        }
+
+        [HttpDelete("comment-reaction")]
+        public async Task<IActionResult> DeleteCommentReaction([FromBody] DeleteCommentReactionDto commentReactionDto) {
+            var commentReactionDeleteModel = commentReactionDto.ToCommentReactionFromDelete();
+            var success = await _reactionRepo.DeleteReactionOnCommentAsync(commentReactionDeleteModel);
+
+            if (!success) {
+                return BadRequest("Could not delete Reaction on Post, Post may not exist");
+            }
+
+            return Ok($"Reaction deleted on post id: {commentReactionDto.CommentId}");
         }
     }
+    
 }

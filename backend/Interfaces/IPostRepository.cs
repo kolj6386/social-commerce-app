@@ -15,5 +15,7 @@ namespace backend.Interfaces
         Task<Post> CreatePost(Post post);
         Task<Post?> UpdateAsync(Post Post);
         Task<PostWithReactionsAndCommentsDto?> GetById(int id);
+
+        Task<PostView> AddPostView(IncrementViewQueryObject queryObject, string? ipAddress);
     }
 }

@@ -9,6 +9,9 @@ namespace backend.Interfaces
 {
     public interface IReactionRepository
     {
-        Task<PostReaction> CreateReactionAsync(PostReaction reactionModel);
+        Task<bool> CreateReactionOnPostAsync(PostReaction reactionModel);
+        Task<bool> CreateReactionOnCommentAsync(CommentReaction reactionCommentModel);
+        Task<bool> DeleteReactionOnPostAsync(PostReaction reactionModel);
+        Task<bool> DeleteReactionOnCommentAsync(CommentReaction reactionCommentModel);
     }
 }

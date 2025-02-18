@@ -53,6 +53,21 @@ namespace backend.Controllers
             return Ok($"post created for user: {postModel.UserId}");
         }
 
+        [HttpPost("increment-view/{postId}")]
+        public async Task<IActionResult> IncrementPostView([FromBody] IncrementViewQueryObject queryObject)
+        {
+            // Logic to increment the view counter for the post
+            var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
+
+            var view = await _postRepo.AddPostView(queryObject, ipAddress);
+
+            if (view == null) {
+                return Ok("view not counted");
+            }
+
+            return Ok($"View added to post: {queryObject.PostId}");
+        }
+
         [HttpDelete("delete")]
         public async Task<IActionResult> DeletePost([FromQuery] DeletePostQueryObject queryObject) {
             if (!ModelState.IsValid) {

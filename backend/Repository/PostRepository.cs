@@ -25,6 +25,54 @@ namespace backend.Repository
             _logger = logger;
         }
 
+        public async Task<PostView> AddPostView(IncrementViewQueryObject queryObject, string ipAddress)
+        {
+            // Need the IP address to count a view
+            if (ipAddress == null) {
+                return null;
+            }
+
+            // Check if this user already added a view and if they did return 
+            var view = await _context.PostViews.FromSqlRaw(
+                "SELECT * FROM PostViews WHERE PostId = @PostId AND UserID = @UserId AND ViewedAt > DATEADD(HOUR, -12, GETDATE())",
+                new SqlParameter("@PostId", queryObject.PostId),
+                new SqlParameter("@UserId", queryObject.UserId)
+            ).FirstOrDefaultAsync();
+
+
+            // Means there is no record yet and to add in a view on the post and viewpost table
+            if (view == null) {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "UPDATE Posts SET PostViews = PostViews + 1 WHERE Id = @PostId",
+                    new SqlParameter("@PostId", queryObject.PostId)
+                );
+
+                await _context.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO PostViews (PostId, UserId, IpAddress, ViewedAt) VALUES ({0}, {1}, {2}, {3})",
+                    queryObject.PostId, queryObject.UserId, ipAddress, DateTime.Now
+                );
+
+                var insertedView = await _context.PostViews
+                .FromSqlRaw(
+                    "SELECT * FROM PostViews WHERE PostId = @PostId AND UserID = @UserId AND IpAddress = @IpAddress AND ViewedAt = @ViewedAt",
+                    new SqlParameter("@PostId", queryObject.PostId),
+                    new SqlParameter("@UserId", (object?)queryObject.UserId ?? DBNull.Value),
+                    new SqlParameter("@IpAddress", ipAddress),
+                    new SqlParameter("@ViewedAt", DateTime.Now)
+                ).FirstOrDefaultAsync();
+
+                if (insertedView == null) {
+                    return null;
+                }
+
+                
+                await _context.SaveChangesAsync();
+                return insertedView;
+            } else {
+                return null;
+            }
+        }
+
         public async Task<Post> CreatePost(Post postModel)
         {
             await _context.Posts.AddAsync(postModel);
