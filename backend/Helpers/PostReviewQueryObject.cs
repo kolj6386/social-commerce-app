@@ -6,13 +6,11 @@ using System.Threading.Tasks;
 
 namespace backend.Helpers
 {
-    public class CreateCommentQueryObject
+    public class PostReviewQueryObject
     {
-        [Required(ErrorMessage = "Id of user is required")]
-        public int Userid { get; set; }
         [Required(ErrorMessage = "Id of post is required")]
         public int PostId { get; set; }
-        [Required(ErrorMessage = "Comment content cannot be null")]
-        public string CommentContent { get; set; }
+        [Required(ErrorMessage = "Approved boolean missing")]
+        public bool Approved { get; set; }
     }
 }

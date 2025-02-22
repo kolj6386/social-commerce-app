@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using backend.Dtos.Comment;
 using backend.Helpers;
 using backend.Models;
 
@@ -11,5 +12,6 @@ namespace backend.Interfaces
     {
         Task<Comment> CreateCommentOnPost(Comment Comment);
         Task<Comment?> DeleteCommentAsync(DeleteCommentQueryObject queryObject);
+        Task<List<UnapprovedCommentDto?>> GetUnapprovedComments(UnapprovedPostsQueryObject queryObject, string storeId);
     }
 }

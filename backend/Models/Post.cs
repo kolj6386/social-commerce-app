@@ -21,5 +21,7 @@ namespace backend.Models
         public DateTime PostCreated { get; set; } = DateTime.Now;
         public List<string> PostMedia { get; set; } = new List<string>();
         public int PostViews { get; set; }
+        public string ShopId { get; set; }
+        public bool ApprovedPost { get; set; } = false;
     }
 }

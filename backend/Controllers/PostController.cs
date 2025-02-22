@@ -12,25 +12,67 @@ namespace backend.Controllers
 {
     [Route("api/post")]
     [ApiController]
-    public class ContentController : ControllerBase
+    public class PostController : ControllerBase
     {
         private readonly IPostRepository _postRepo;
-        private readonly ILogger<ContentController> _logger;
 
-        public ContentController(IPostRepository postRepo, ILogger<ContentController> logger)
+        private readonly ICommentRepository _commentRepo;
+        private readonly ILogger<PostController> _logger;
+
+        public PostController(IPostRepository postRepo, ICommentRepository commentRepo)
         {
             _postRepo = postRepo;
-            _logger = logger;
+            _commentRepo = commentRepo;
         }
 
-        [HttpGet]
+        [HttpGet("review-all")]
+        public async Task<IActionResult> GetAllPostsAndCommentsForReview([FromQuery]UnapprovedPostsQueryObject queryObject) {
+            
+            var origin = Request.Headers["Origin"].ToString();
+
+            if (string.IsNullOrEmpty(origin))
+            {
+                return BadRequest(new 
+                {
+                    message = "Origin header is missing"
+                });
+            }
+
+            var posts = await _postRepo.GetUnapprovedPosts(queryObject, origin);
+            var comments = await  _commentRepo.GetUnapprovedComments(queryObject, origin);
+            
+            var response = new
+            {
+                Posts = posts,
+                Comments = comments
+            };
+
+            return Ok(response);
+        }
+
+        [HttpGet("all")]
         public async Task<IActionResult> GetAllPosts([FromQuery]ContentQueryObject queryObject) {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            // TODO - Add the store ID to the query object and only get posts belonging to this store
             var content = await _postRepo.GetAllAsync(queryObject);
+            
+            if (content == null) {
+                return Ok(Array.Empty<string>());
+            }
+
             return Ok(content);
         }
 
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById([FromRoute] int id) {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            // TODO - Add the store ID to the query object and only get posts belonging to this store
             var post = await _postRepo.GetById(id);
 
             if (post == null) {
@@ -40,22 +82,80 @@ namespace backend.Controllers
             return Ok(post);
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreatePostDto postDto) {
-            // If the incoming request does not match the required DTO - block it. 
+        [HttpPost("approve-post")]
+        public async Task<IActionResult> ApproveOrDissaproveAPost([FromBody] PostReviewQueryObject queryObject) {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            // turning our request into a proper Post via a dto mapper so it saves in the database
-            var postModel = postDto.ToPostFromCreateDto();
-            await _postRepo.CreatePost(postModel);
-            return Ok($"post created for user: {postModel.UserId}");
+
+            var result = await _postRepo.ApproveOrDissaprovePost(queryObject);
+            
+            if (!result) {
+                return BadRequest("Post does not exist");
+            }
+
+            return Ok();
         }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreatePostDto postDto)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid request data",
+                errors = ModelState
+                    .Where(x => x.Value.Errors.Any())
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
+                    )
+            });
+        }
+
+        var origin = Request.Headers["Origin"].ToString();
+
+        if (string.IsNullOrEmpty(origin))
+        {
+            return BadRequest(new
+            {
+                message = "Origin header missing"
+            });
+        }
+
+        try
+        {
+            var postModel = postDto.ToPostFromCreateDto();
+            postModel.ShopId = origin;
+            await _postRepo.CreatePost(postModel);
+
+            return Ok(new
+            {
+                message = "Post created successfully",
+                userId = postModel.UserId,
+                postId = postModel.Id
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new
+            {
+                message = "An unexpected error occurred",
+                details = ex.Message
+            });
+        }
+    }
+
 
         [HttpPost("increment-view/{postId}")]
         public async Task<IActionResult> IncrementPostView([FromBody] IncrementViewQueryObject queryObject)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
             // Logic to increment the view counter for the post
             var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
 

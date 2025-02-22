@@ -25,6 +25,10 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateReactionOnPost([FromBody] CreateReactionDto reactionDto) {
 
+            if (!ModelState.IsValid) {
+                return BadRequest(ModelState);
+            }
+
             var reactionModel = reactionDto.ToReactionFromCreate();
             // Repository handles the database updates - so updating in here
             var success = await _reactionRepo.CreateReactionOnPostAsync(reactionModel);
@@ -38,6 +42,9 @@ namespace backend.Controllers
         
         [HttpPost("comment-reaction")]
         public async Task<IActionResult> CreateReactionOnComment([FromBody] CreateCommentReactionDto commentReactionDto) {
+            if (!ModelState.IsValid) {
+                return BadRequest(ModelState);
+            }
 
             var commentReactionModel = commentReactionDto.ToCommentReactionFromCreate();
             var success = await _reactionRepo.CreateReactionOnCommentAsync(commentReactionModel); 
@@ -53,6 +60,9 @@ namespace backend.Controllers
 
         [HttpDelete]
         public async Task<IActionResult> DeletePostReaction([FromBody] DeleteReactionDto reactionDto) {
+            if (!ModelState.IsValid) {
+                return BadRequest(ModelState);
+            }
             var postReactionDeleteModel = reactionDto.ToReactionFromDelete();
             var success = await _reactionRepo.DeleteReactionOnPostAsync(postReactionDeleteModel);
 
@@ -65,6 +75,9 @@ namespace backend.Controllers
 
         [HttpDelete("comment-reaction")]
         public async Task<IActionResult> DeleteCommentReaction([FromBody] DeleteCommentReactionDto commentReactionDto) {
+            if (!ModelState.IsValid) {
+                return BadRequest(ModelState);
+            }
             var commentReactionDeleteModel = commentReactionDto.ToCommentReactionFromDelete();
             var success = await _reactionRepo.DeleteReactionOnCommentAsync(commentReactionDeleteModel);
 

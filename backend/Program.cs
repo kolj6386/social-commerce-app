@@ -11,7 +11,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
-
 // Enable Console Logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -55,6 +54,16 @@ builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IReactionRepository, ReactionRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 
+//singleton - only version will ever exist
+//scoped - one version per request
+//transient - one version per time the class is injected
+
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowAll",
+    policy => {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
 
 var app = builder.Build();
 
@@ -65,10 +74,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseHttpsRedirection();
-app.MapControllers();
-app.UseSwagger();
-app.UseSwaggerUI();
 app.UseRouting();
+app.UseCors("AllowAll");
+app.MapControllers();
 app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
 
 app.Run();

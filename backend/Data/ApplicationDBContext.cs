@@ -37,7 +37,22 @@ namespace backend.Data
                 PostContent = "seeded post data",
                 PostCreated = DateTime.Now,
                 PostMedia = new List<string> {"/image1.jpg", "image2.jpg"},
-                PostViews = 100
+                PostViews = 100,
+                ShopId = "pixel-commerce-dev.myshopify.com",
+                ApprovedPost = false
+                },
+                new Post {
+                Id = 2, 
+                ProductId = 112223344, 
+                UserId = 1,
+                FirstName = "jesse",
+                LastName = "kerger",
+                PostContent = "seeded post data2",
+                PostCreated = DateTime.Now,
+                PostMedia = new List<string> {"/image1.jpg", "/image2.jpg"},
+                PostViews = 100,
+                ShopId = "pixel-commerce-dev.myshopify.com",
+                ApprovedPost = false
                 }
             );
         }

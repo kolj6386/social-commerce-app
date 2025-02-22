@@ -55,6 +55,15 @@ namespace backend.Dtos.Reaction.Post
         public string? CommentReactionType { get; set; }
     }
 
+    public class UnnapprovedPostsDto {
+        public int Id { get; set; }
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string PostContent { get; set; }
+        public DateTime PostCreated { get; set; }
+        public List<string> PostMedia { get; set; } = new List<string>();
+    }
+
         public class CommentDto
     {
         public int Id { get; set; }

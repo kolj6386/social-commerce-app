@@ -1,15 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using backend.Data;
-using backend.Dtos.Comment;
-using backend.Dtos.Dtos.Reaction;
 using backend.Dtos.Reaction.Post;
 using backend.Helpers;
 using backend.Interfaces;
 using backend.Models;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,7 +23,7 @@ namespace backend.Repository
             _logger = logger;
         }
 
-        public async Task<PostView> AddPostView(IncrementViewQueryObject queryObject, string ipAddress)
+        public async Task<PostView?> AddPostView(IncrementViewQueryObject queryObject, string ipAddress)
         {
             // Need the IP address to count a view
             if (ipAddress == null) {
@@ -71,6 +69,23 @@ namespace backend.Repository
             } else {
                 return null;
             }
+        }
+
+        public async Task<bool> ApproveOrDissaprovePost(PostReviewQueryObject queryObject)
+        {
+            var post = await _context.Posts.FromSqlRaw("SELECT * FROM Posts WHERE Id = {0}", queryObject.PostId).FirstOrDefaultAsync();
+
+            if (post == null) {
+                return false;
+            }
+
+            await _context.Database.ExecuteSqlRawAsync(
+                "UPDATE Posts SET ApprovedPost = @ApprovedPost WHERE Id = @PostId",
+                new SqlParameter("@ApprovedPost", queryObject.Approved),
+                new SqlParameter("@PostId", queryObject.PostId)
+            );
+
+            return true;
         }
 
         public async Task<Post> CreatePost(Post postModel)
@@ -120,6 +135,10 @@ namespace backend.Repository
                 LEFT JOIN PostReactions pr ON p.Id = pr.PostId  
                 LEFT JOIN CommentReactions cr ON c.Id = cr.CommentId
 
+                WHERE
+                (@ApprovedPosts = 1 AND p.ApprovedPost = 1)
+                OR (@ApprovedPosts = 0 AND p.ApprovedPost = 0)
+
                 GROUP BY 
                 p.Id, p.UserId, p.FirstName, p.LastName, p.PostContent, 
                 p.PostCreated, p.PostViews, p.PostMedia,
@@ -127,6 +146,7 @@ namespace backend.Repository
 
                 ORDER BY p.PostCreated DESC
                 OFFSET @PageNumber ROWS FETCH NEXT @PageSize ROWS ONLY",
+                new SqlParameter("@ApprovedPosts", queryObject.ApprovedPosts),
                 new SqlParameter("@PageNumber", (queryObject.PageNumber - 1) * queryObject.ResultsPerPage),
                 new SqlParameter("@PageSize", queryObject.ResultsPerPage)
             ).ToListAsync();
@@ -233,6 +253,38 @@ namespace backend.Repository
             }).ToList();
 
             return post.FirstOrDefault();
+        }
+
+        public async Task<List<UnnapprovedPostsDto?>> GetUnapprovedPosts(UnapprovedPostsQueryObject queryObject, string shopId)
+        {
+            var posts = await _context.Database.SqlQueryRaw<UnnapprovedPostsDto>(
+                @"
+                SELECT 
+                    p.Id, 
+                    p.FirstName, 
+                    p.LastName, 
+                    p.PostContent, 
+                    p.PostCreated,
+                    p.PostMedia
+
+                FROM Posts p
+
+                WHERE
+                @ShopId = p.ShopId
+                AND p.ApprovedPost = 0
+
+                ORDER BY p.PostCreated DESC
+                OFFSET @PageNumber ROWS FETCH NEXT @PageSize ROWS ONLY",
+                new SqlParameter("@ShopId", shopId),
+                new SqlParameter("@PageNumber", (queryObject.PageNumber - 1) * queryObject.ResultsPerPage),
+                new SqlParameter("@PageSize", queryObject.ResultsPerPage)
+            ).ToListAsync();
+
+            if (posts == null) {
+                return null;
+            }
+
+            return posts;
         }
 
         public async Task<Post?> UpdateAsync(Post content)
