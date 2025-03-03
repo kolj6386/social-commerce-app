@@ -25,31 +25,6 @@ namespace backend.Controllers
             _commentRepo = commentRepo;
         }
 
-        [HttpGet("review-all")]
-        public async Task<IActionResult> GetAllPostsAndCommentsForReview([FromQuery]UnapprovedPostsQueryObject queryObject) {
-            
-            var origin = Request.Headers["Origin"].ToString();
-
-            if (string.IsNullOrEmpty(origin))
-            {
-                return BadRequest(new 
-                {
-                    message = "Origin header is missing"
-                });
-            }
-
-            var posts = await _postRepo.GetUnapprovedPosts(queryObject, origin);
-            var comments = await  _commentRepo.GetUnapprovedComments(queryObject, origin);
-            
-            var response = new
-            {
-                Posts = posts,
-                Comments = comments
-            };
-
-            return Ok(response);
-        }
-
         [HttpGet("all")]
         public async Task<IActionResult> GetAllPosts([FromQuery]ContentQueryObject queryObject) {
             if (!ModelState.IsValid)
@@ -80,22 +55,6 @@ namespace backend.Controllers
             }
 
             return Ok(post);
-        }
-
-        [HttpPost("approve-post")]
-        public async Task<IActionResult> ApproveOrDissaproveAPost([FromBody] PostReviewQueryObject queryObject) {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var result = await _postRepo.ApproveOrDissaprovePost(queryObject);
-            
-            if (!result) {
-                return BadRequest("Post does not exist");
-            }
-
-            return Ok();
         }
 
     [HttpPost]

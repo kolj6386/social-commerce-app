@@ -1,5 +1,6 @@
 using backend.Data;
 using backend.Interfaces;
+using backend.Middleware;
 using backend.Repository;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
@@ -53,7 +54,7 @@ builder.Services.AddDbContext<ApplicationDBContext>(options =>
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IReactionRepository, ReactionRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
-
+builder.Services.AddHttpContextAccessor();
 //singleton - only version will ever exist
 //scoped - one version per request
 //transient - one version per time the class is injected
@@ -73,9 +74,35 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseHttpsRedirection();
-app.UseRouting();
 app.UseCors("AllowAll");
+// Confirm CORS headers
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Add("Access-Control-Allow-Origin", "*");
+    context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    await next.Invoke();
+});
+
+// Handle preflight requests
+app.Use(async (context, next) =>
+{
+    if (context.Request.Method == "OPTIONS")
+    {
+        context.Response.StatusCode = 200;
+        await context.Response.CompleteAsync();
+        return;
+    }
+    await next.Invoke();
+});
+
+
+app.UseRouting();
+app.UseHttpsRedirection();
+// app.UseMiddleware<backend.Middleware.JwtAuthMiddleware>();
+app.UseWhen(context => context.Request.Path.StartsWithSegments("/admin"), adminRoute => {
+    adminRoute.UseMiddleware<JwtAuthMiddleware>();
+});
 app.MapControllers();
 app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
 

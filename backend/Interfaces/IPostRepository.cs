@@ -18,6 +18,6 @@ namespace backend.Interfaces
         Task<PostWithReactionsAndCommentsDto?> GetById(int id);
         Task<PostView> AddPostView(IncrementViewQueryObject queryObject, string? ipAddress);
         Task<bool> ApproveOrDissaprovePost(PostReviewQueryObject queryObject);
-        Task<List<UnnapprovedPostsDto>> GetUnapprovedPosts(UnapprovedPostsQueryObject queryObject, string storeId);
+        Task<(List<UnnapprovedPostsDto> Posts, bool hasNextPage)> GetUnapprovedPosts(UnapprovedPostsQueryObject queryObject, string storeId);
     }
 }

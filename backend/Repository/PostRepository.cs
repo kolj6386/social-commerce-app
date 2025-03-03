@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using System.Configuration;
 using backend.Data;
 using backend.Dtos.Reaction.Post;
 using backend.Helpers;
@@ -10,6 +12,8 @@ using backend.Interfaces;
 using backend.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
 
 namespace backend.Repository
 {
@@ -17,10 +21,15 @@ namespace backend.Repository
     {
         private readonly ApplicationDBContext _context;
         private readonly ILogger<PostRepository> _logger;
-        public PostRepository(ApplicationDBContext context, ILogger<PostRepository> logger)
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IConfiguration _configuration;
+
+        public PostRepository(ApplicationDBContext context, ILogger<PostRepository> logger, IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _httpContextAccessor = httpContextAccessor;
+            _configuration = configuration;
         }
 
         public async Task<PostView?> AddPostView(IncrementViewQueryObject queryObject, string ipAddress)
@@ -107,6 +116,7 @@ namespace backend.Repository
             await _context.SaveChangesAsync();
             return post;
         }
+
 
         public async Task<List<PostWithReactionsAndCommentsDto>> GetAllAsync(ContentQueryObject queryObject)
         {
@@ -255,7 +265,7 @@ namespace backend.Repository
             return post.FirstOrDefault();
         }
 
-        public async Task<List<UnnapprovedPostsDto?>> GetUnapprovedPosts(UnapprovedPostsQueryObject queryObject, string shopId)
+        public async Task<(List<UnnapprovedPostsDto?> Posts, bool hasNextPage)> GetUnapprovedPosts(UnapprovedPostsQueryObject queryObject, string shopId)
         {
             var posts = await _context.Database.SqlQueryRaw<UnnapprovedPostsDto>(
                 @"
@@ -280,11 +290,14 @@ namespace backend.Repository
                 new SqlParameter("@PageSize", queryObject.ResultsPerPage)
             ).ToListAsync();
 
-            if (posts == null) {
-                return null;
-            }
+            // Check if there's a "next page" by seeing if there are more records
+            var totalPosts = await _context.Comments
+            .Where(p => p.ShopId == shopId && !p.ApprovedComment)
+            .CountAsync();
 
-            return posts;
+            var hasNextPagePosts = (queryObject.PageNumber * queryObject.ResultsPerPage) < totalPosts;
+
+            return (posts, hasNextPagePosts);
         }
 
         public async Task<Post?> UpdateAsync(Post content)

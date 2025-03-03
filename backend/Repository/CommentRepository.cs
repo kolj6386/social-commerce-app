@@ -41,8 +41,9 @@ namespace backend.Repository
             return comment;
         }
 
-        public async Task<List<UnapprovedCommentDto?>> GetUnapprovedComments(UnapprovedPostsQueryObject queryObject, string storeId)
+        public async Task<(List<UnapprovedCommentDto?> Comments, bool HasNextPage)> GetUnapprovedComments(UnapprovedPostsQueryObject queryObject, string storeId)
         {
+            // TODO - Need to request a snippet of the post content as well, to see what we are commenting on.
             var comments = await _context.Database.SqlQueryRaw<UnapprovedCommentDto>(
                 @"
                 SELECT
@@ -63,11 +64,14 @@ namespace backend.Repository
                 new SqlParameter("@PageSize", queryObject.ResultsPerPage)
             ).ToListAsync();
 
-            if (comments == null) {
-                return null;
-            }
+            // Check if there's a "next page" by seeing if there are more records
+            var totalComments = await _context.Comments
+                .Where(c => c.ShopId == storeId && !c.ApprovedComment)
+                .CountAsync();
 
-            return comments;
+            var hasNextPageComments = (queryObject.PageNumber * queryObject.ResultsPerPage) < totalComments;
+
+            return (comments, hasNextPageComments);
         }
     }
 }
