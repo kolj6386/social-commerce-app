@@ -22,7 +22,12 @@ namespace backend.Controllers
 
         [HttpGet("all")]
         public async Task<IActionResult> GetAllPostsAndCommentsForReview([FromQuery]UnapprovedPostsQueryObject queryObject) {
-            
+            var adminPrincipal = HttpContext.Items["ShopifyAdmin"];
+            if (adminPrincipal == null)
+            {
+                return Unauthorized(new { message = "Unauthorized access" });
+            }
+
             var origin = Request.Headers["Origin"].ToString();
 
             if (string.IsNullOrEmpty(origin))
@@ -54,6 +59,13 @@ namespace backend.Controllers
 
         [HttpPost("approve-post")]
         public async Task<IActionResult> ApproveAPost([FromBody] PostReviewQueryObject queryObject) {
+
+            var adminPrincipal = HttpContext.Items["ShopifyAdmin"];
+            if (adminPrincipal == null)
+            {
+                return Unauthorized(new { message = "Unauthorized access" });
+            }
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -69,7 +81,7 @@ namespace backend.Controllers
         }
 
         [HttpDelete("delete")]
-        public async Task<IActionResult> DeletePost([FromQuery] DeletePostQueryObject queryObject) {
+        public async Task<IActionResult> DeletePost([FromBody] DeletePostQueryObject queryObject) {
             var adminPrincipal = HttpContext.Items["ShopifyAdmin"];
             if (adminPrincipal == null)
             {
@@ -80,7 +92,7 @@ namespace backend.Controllers
                 return BadRequest(ModelState);
             }
 
-            var postModel = await _postRepo.DeletePost(queryObject);
+            var postModel = await _postRepo.AdminDeletePost(queryObject);
 
             if (postModel == null) {
                 return NotFound("Post not found or post does not belong to this user");

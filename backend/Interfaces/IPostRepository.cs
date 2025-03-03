@@ -13,6 +13,7 @@ namespace backend.Interfaces
     {
         Task<List<PostWithReactionsAndCommentsDto>> GetAllAsync(ContentQueryObject queryObject);
         Task<Post?> DeletePost(DeletePostQueryObject queryObject);
+        Task<Post?> AdminDeletePost(DeletePostQueryObject queryObject);
         Task<Post> CreatePost(Post post);
         Task<Post?> UpdateAsync(Post Post);
         Task<PostWithReactionsAndCommentsDto?> GetById(int id);

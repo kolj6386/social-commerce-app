@@ -117,6 +117,20 @@ namespace backend.Repository
             return post;
         }
 
+        public async Task<Post?> AdminDeletePost(DeletePostQueryObject queryObject)
+        {
+            var post = await _context.Posts.FromSqlRaw("SELECT * FROM Posts WHERE Id = {0}", queryObject.postId).FirstOrDefaultAsync();
+
+            if (post == null) {
+                 _logger.LogWarning($"post not found: {queryObject.postId}");
+                return null;
+            }
+
+            _context.Posts.Remove(post);
+            await _context.SaveChangesAsync();
+            return post;
+        }
+
 
         public async Task<List<PostWithReactionsAndCommentsDto>> GetAllAsync(ContentQueryObject queryObject)
         {

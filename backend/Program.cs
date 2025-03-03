@@ -100,7 +100,7 @@ app.Use(async (context, next) =>
 app.UseRouting();
 app.UseHttpsRedirection();
 // app.UseMiddleware<backend.Middleware.JwtAuthMiddleware>();
-app.UseWhen(context => context.Request.Path.StartsWithSegments("/admin"), adminRoute => {
+app.UseWhen(context => context.Request.Path.StartsWithSegments("/api/admin"), adminRoute => {
     adminRoute.UseMiddleware<JwtAuthMiddleware>();
 });
 app.MapControllers();
