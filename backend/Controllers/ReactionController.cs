@@ -14,79 +14,157 @@ namespace backend.Controllers
     [ApiController]
     public class ReactionController : ControllerBase
     {
-        private readonly IPostRepository _postRepo;
         private readonly IReactionRepository _reactionRepo;
-        public ReactionController(IReactionRepository reactionRepo, IPostRepository postRepo)
+        public ReactionController(IReactionRepository reactionRepo)
         {
             _reactionRepo = reactionRepo;
-            _postRepo = postRepo;
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateReactionOnPost([FromBody] CreateReactionDto reactionDto) {
+        public async Task<IActionResult> CreateReactionOnPost([FromBody] CreateReactionDto reactionDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Any())
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
 
-            if (!ModelState.IsValid) {
-                return BadRequest(ModelState);
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid request data",
+                    Errors = errors
+                });
             }
 
             var reactionModel = reactionDto.ToReactionFromCreate();
-            // Repository handles the database updates - so updating in here
             var success = await _reactionRepo.CreateReactionOnPostAsync(reactionModel);
             if (!success)
             {
-                return BadRequest("Post does not exist");
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Post does not exist"
+                });
             }
 
-            return Ok($"Reaction added to post id: {reactionDto.PostId}");
-        }        
-        
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Reaction added successfully",
+                Data = new { reactionDto.PostId }
+            });
+        }
+
         [HttpPost("comment-reaction")]
-        public async Task<IActionResult> CreateReactionOnComment([FromBody] CreateCommentReactionDto commentReactionDto) {
-            if (!ModelState.IsValid) {
-                return BadRequest(ModelState);
+        public async Task<IActionResult> CreateReactionOnComment([FromBody] CreateCommentReactionDto commentReactionDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Any())
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
+
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid request data",
+                    Errors = errors
+                });
             }
 
             var commentReactionModel = commentReactionDto.ToCommentReactionFromCreate();
-            var success = await _reactionRepo.CreateReactionOnCommentAsync(commentReactionModel); 
+            var success = await _reactionRepo.CreateReactionOnCommentAsync(commentReactionModel);
 
             if (!success)
             {
-                return BadRequest("Comment does not exist");
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Comment does not exist"
+                });
             }
 
-            return Ok($"Reaction added to post id: {commentReactionDto.CommentId}");
-
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Reaction added successfully",
+                Data = new { commentReactionDto.CommentId }
+            });
         }
 
         [HttpDelete]
-        public async Task<IActionResult> DeletePostReaction([FromBody] DeleteReactionDto reactionDto) {
-            if (!ModelState.IsValid) {
-                return BadRequest(ModelState);
+        public async Task<IActionResult> DeletePostReaction([FromBody] DeleteReactionDto reactionDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Any())
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
+
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid request data",
+                    Errors = errors
+                });
             }
+
             var postReactionDeleteModel = reactionDto.ToReactionFromDelete();
             var success = await _reactionRepo.DeleteReactionOnPostAsync(postReactionDeleteModel);
 
-            if (!success) {
-                return BadRequest("Could not delete Reaction on Post, Post may not exist");
+            if (!success)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Could not delete reaction on post, post may not exist"
+                });
             }
 
-            return Ok($"Reaction deleted on post id: {reactionDto.PostId}");
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Reaction deleted successfully",
+                Data = new { reactionDto.PostId }
+            });
         }
 
         [HttpDelete("comment-reaction")]
-        public async Task<IActionResult> DeleteCommentReaction([FromBody] DeleteCommentReactionDto commentReactionDto) {
-            if (!ModelState.IsValid) {
-                return BadRequest(ModelState);
+        public async Task<IActionResult> DeleteCommentReaction([FromBody] DeleteCommentReactionDto commentReactionDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Any())
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray());
+
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid request data",
+                    Errors = errors
+                });
             }
+
             var commentReactionDeleteModel = commentReactionDto.ToCommentReactionFromDelete();
             var success = await _reactionRepo.DeleteReactionOnCommentAsync(commentReactionDeleteModel);
 
-            if (!success) {
-                return BadRequest("Could not delete Reaction on Post, Post may not exist");
+            if (!success)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Could not delete reaction on comment, comment may not exist"
+                });
             }
 
-            return Ok($"Reaction deleted on post id: {commentReactionDto.CommentId}");
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Reaction deleted successfully",
+                Data = new { commentReactionDto.CommentId }
+            });
         }
     }
-    
 }
