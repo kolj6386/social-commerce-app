@@ -41,6 +41,19 @@ namespace backend.Repository
             return comment;
         }
 
+        public async Task<Comment?> EditCommentContent(EditCommentQueryObject queryObject)
+        {
+            var comment = await _context.Comments.FromSqlRaw("SELECT * FROM Comments WHERE Id = {0}", queryObject.CommentId).FirstOrDefaultAsync();
+
+            if (comment == null || comment.UserId != queryObject.Userid) {
+                return null;
+            }
+
+            comment.Content = queryObject.CommentContent;
+            await _context.SaveChangesAsync();
+            return comment;
+        }
+
         public async Task<(List<UnapprovedCommentDto?> Comments, bool HasNextPage)> GetUnapprovedComments(UnapprovedPostsQueryObject queryObject, string storeId)
         {
             // TODO - Need to request a snippet of the post content as well, to see what we are commenting on.

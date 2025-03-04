@@ -197,6 +197,47 @@ namespace backend.Controllers
             });
         }
 
+        [HttpPatch("edit")]
+        public async Task<IActionResult> EditPost([FromBody] EditPostQueryObject queryObject)
+        {
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState
+                    .Where(x => x.Value.Errors.Any())
+                    .ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray()
+                    );
+
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid request data",
+                    Errors = errors
+                });
+            }
+
+            var postModel = await _postRepo.EditPost(queryObject);
+
+            if (postModel == null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Post not found or post does not belong to this user"
+                });
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Post edited successfully",
+                Data = postModel
+            });
+
+
+        }
+
         [HttpDelete("delete")]
         public async Task<IActionResult> DeletePost([FromQuery] DeletePostQueryObject queryObject)
         {

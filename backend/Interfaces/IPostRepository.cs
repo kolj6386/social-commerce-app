@@ -15,7 +15,7 @@ namespace backend.Interfaces
         Task<Post?> DeletePost(DeletePostQueryObject queryObject);
         Task<Post?> AdminDeletePost(DeletePostQueryObject queryObject);
         Task<Post> CreatePost(Post post);
-        Task<Post?> UpdateAsync(Post Post);
+        Task<Post> EditPost(EditPostQueryObject queryObject);
         Task<PostWithReactionsAndCommentsDto?> GetById(int id);
         Task<PostView> AddPostView(IncrementViewQueryObject queryObject, string? ipAddress);
         Task<bool> ApproveOrDissaprovePost(PostReviewQueryObject queryObject);

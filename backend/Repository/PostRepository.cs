@@ -21,15 +21,11 @@ namespace backend.Repository
     {
         private readonly ApplicationDBContext _context;
         private readonly ILogger<PostRepository> _logger;
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IConfiguration _configuration;
 
-        public PostRepository(ApplicationDBContext context, ILogger<PostRepository> logger, IHttpContextAccessor httpContextAccessor, IConfiguration configuration)
+        public PostRepository(ApplicationDBContext context, ILogger<PostRepository> logger)
         {
             _context = context;
             _logger = logger;
-            _httpContextAccessor = httpContextAccessor;
-            _configuration = configuration;
         }
 
         public async Task<PostView?> AddPostView(IncrementViewQueryObject queryObject, string ipAddress)
@@ -314,20 +310,21 @@ namespace backend.Repository
             return (posts, hasNextPagePosts);
         }
 
-        public async Task<Post?> UpdateAsync(Post content)
-        {
-            var existingStock = await _context.Posts.FirstOrDefaultAsync(x => x.Id == content.Id);
 
-            if (existingStock == null) {
+        public async Task<Post?> EditPost(EditPostQueryObject queryObject)
+        {
+            // Check if the postId is owned by the userId before editing
+            var post = await _context.Posts.FromSqlRaw("SELECT * FROM Posts WHERE Id = {0}", queryObject.PostId).FirstOrDefaultAsync();
+
+            if (post == null || post.UserId != queryObject.Userid) {
                 return null;
             }
 
-            // TODO: Link up the existing post with the new reaction
-            // existingStock.Reactions = content.Reactions;
+            post.PostContent = queryObject.PostContent;
 
             await _context.SaveChangesAsync();
-            return existingStock;
 
+            return post;
         }
     }
 }

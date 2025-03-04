@@ -12,6 +12,7 @@ namespace backend.Interfaces
     {
         Task<Comment> CreateCommentOnPost(Comment Comment);
         Task<Comment?> DeleteCommentAsync(DeleteCommentQueryObject queryObject);
+        Task<Comment?> EditCommentContent(EditCommentQueryObject queryObject);
         Task<(List<UnapprovedCommentDto?> Comments, bool HasNextPage)> GetUnapprovedComments(UnapprovedPostsQueryObject queryObject, string storeId);
     }
 }

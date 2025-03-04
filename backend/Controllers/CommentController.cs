@@ -71,6 +71,40 @@ namespace backend.Controllers
             }
         }
 
+        [HttpPatch("edit")]
+        public async Task<IActionResult> EditComment([FromBody] EditCommentQueryObject queryObject)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid request data",
+                    Errors = ModelState
+                        .Where(x => x.Value.Errors.Any())
+                        .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Errors.Select(e => e.ErrorMessage).ToArray())
+                });
+            }
+
+            var commentModel = await _commentRepository.EditCommentContent(queryObject);
+            if (commentModel == null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Comment not found or comment does not belong to user Id"
+                });
+            }
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Comment edited successfully",
+                Data = new { commentModel.Id, commentModel.Content }
+            });
+
+        }
+
         [HttpDelete("delete")]
         public async Task<IActionResult> DeleteComment([FromQuery] DeleteCommentQueryObject queryObject)
         {
