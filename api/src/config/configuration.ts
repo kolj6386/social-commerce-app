@@ -17,7 +17,11 @@ export default () => ({
     validAudience: process.env.SHOPIFY_VALID_AUDIENCE,
     oauthRedirectUri:
       process.env.SHOPIFY_OAUTH_REDIRECT_URI ??
-      'https://social-commerce.ngrok.app/auth/shopify/callback',
-    appUrl: process.env.SHOPIFY_APP_URL ?? 'https://social-commerce.ngrok.app/app',
+      'https://invasive-marie-uneradicative.ngrok-free.dev/auth/shopify/callback',
+    backendUrl:
+      process.env.SHOPIFY_BACKEND_URL ?? 'https://invasive-marie-uneradicative.ngrok-free.dev',
+    // Frontend UI (Cloud Run) — proxied via GET /app on the backend.
+    appUrl: process.env.SHOPIFY_APP_URL ?? 'https://social-commerce-service-916238980094.us-central1.run.app',
+    appUiPath: process.env.SHOPIFY_APP_UI_PATH ?? '/app',
   },
 })

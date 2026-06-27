@@ -7,8 +7,9 @@ import { Post } from '../entities/post.entity'
 import { PostReaction } from '../entities/post-reaction.entity'
 import { PostView } from '../entities/post-view.entity'
 import { PascalCaseNamingStrategy } from './pascal-case-naming.strategy'
+import { Shop } from '../entities/shop.entity'
 
-const entities = [Post, Comment, PostReaction, CommentReaction, PostView]
+const entities = [Post, Comment, PostReaction, CommentReaction, PostView, Shop]
 
 @Module({
   imports: [

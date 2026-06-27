@@ -6,7 +6,8 @@ import { AppModule } from './app.module'
 
 async function bootstrap() {
   // Builds the app from app/module.ts
-  const app = await NestFactory.create<NestExpressApplication>(AppModule)
+  // rawBody: true exposes req.rawBody so webhook HMAC can be verified against the exact payload.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true })
 
   app.enableCors({
     origin: true,
