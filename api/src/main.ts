@@ -1,16 +1,32 @@
-import { ValidationPipe } from '@nestjs/common'
+import { Logger, ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { AppModule } from './app.module'
+import { NotFoundExceptionFilter } from './common/filters/not-found.filter'
+import { CorsOriginsService } from './cors/cors-origins.service'
 
 async function bootstrap() {
+  const logger = new Logger('Bootstrap')
   // Builds the app from app/module.ts
   // rawBody: true exposes req.rawBody so webhook HMAC can be verified against the exact payload.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true })
+  app.useGlobalFilters(new NotFoundExceptionFilter())
 
+  await app.init()
+
+  const corsOrigins = app.get(CorsOriginsService)
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      if (corsOrigins.isAllowed(origin)) {
+        callback(null, true)
+        return
+      }
+
+      logger.warn(`CORS blocked origin: ${origin ?? '(none)'}`)
+      callback(null, false)
+    },
+    credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization, Origin',
   })

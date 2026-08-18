@@ -39,10 +39,10 @@ export const getClientIp = (req: Request): string => {
 
 export const buildRateLimitKey = (req: ShopifyProxyRequest, scope: RateLimitScope): string => {
   const ip = getClientIp(req)
-	
-	if (!ip) {
-		throw new Error('IP is required')
-	}
+
+  if (!ip) {
+    throw new Error('IP is required')
+  }
 
   if (scope === 'ip') {
     return `ip:${ip}`

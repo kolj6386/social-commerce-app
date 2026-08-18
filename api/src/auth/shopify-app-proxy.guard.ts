@@ -20,7 +20,8 @@ export class ShopifyAppProxyGuard implements CanActivate {
       throw new UnauthorizedException()
     }
 
-    const devBypass = process.env.NODE_ENV === 'development' && process.env.APP_PROXY_DEV_BYPASS === 'true'
+    const devBypass =
+      process.env.NODE_ENV === 'development' && process.env.APP_PROXY_DEV_BYPASS === 'true'
 
     if (!devBypass) {
       if (!validateAppProxySignature(query, secret)) {

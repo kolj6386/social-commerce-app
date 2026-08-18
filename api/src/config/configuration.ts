@@ -21,7 +21,19 @@ export default () => ({
     backendUrl:
       process.env.SHOPIFY_BACKEND_URL ?? 'https://invasive-marie-uneradicative.ngrok-free.dev',
     // Frontend UI (Cloud Run) — proxied via GET /app on the backend.
-    appUrl: process.env.SHOPIFY_APP_URL ?? 'https://social-commerce-service-916238980094.us-central1.run.app',
+    appUrl:
+      process.env.SHOPIFY_APP_URL ??
+      'https://social-commerce-service-916238980094.us-central1.run.app',
     appUiPath: process.env.SHOPIFY_APP_UI_PATH ?? '/app',
+    /** App handle used in admin billing URLs (`/charges/{handle}/pricing_plans`). */
+    appHandle: process.env.SHOPIFY_APP_HANDLE ?? 'social-commerce-public-dev',
+    adminApiVersion: process.env.SHOPIFY_ADMIN_API_VERSION ?? '2025-10',
+    partner: {
+      orgId: process.env.SHOPIFY_PARTNER_ORG_ID,
+      accessToken: process.env.SHOPIFY_PARTNER_ACCESS_TOKEN,
+      /** Partner/App Pricing app GID, e.g. `gid://shopify/App/1234`. */
+      appId: process.env.SHOPIFY_PARTNER_APP_ID,
+      apiVersion: process.env.SHOPIFY_PARTNER_API_VERSION ?? '2026-07',
+    },
   },
 })

@@ -9,9 +9,9 @@ import {
   type RawBodyRequest,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { createHmac, timingSafeEqual } from 'crypto'
 import type { Request } from 'express'
 import { ShopService } from '../shop/shop.service'
+import { verifyShopifyWebhookHmac } from './shopify-webhook.util'
 
 @Controller('webhooks/app')
 export class WebhookController {
@@ -35,20 +35,15 @@ export class WebhookController {
     }
 
     this.logger.log(`[webhook] uninstalled — shop=${shopDomain}`)
-    await this.shopService.markUninstalled(shopDomain)
+    await this.shopService.purgeShopData(shopDomain)
     return { success: true }
   }
 
-  /** Verifies the webhook payload HMAC against the app secret (base64, timing-safe). */
   private verifyHmac(rawBody: Buffer | undefined, hmacHeader: string): boolean {
-    const secret = this.config.get<string>('shopify.apiSecret')
-    if (!secret || !rawBody || !hmacHeader) {
-      return false
-    }
-
-    const digest = createHmac('sha256', secret).update(rawBody).digest('base64')
-    const expected = Buffer.from(digest)
-    const received = Buffer.from(hmacHeader)
-    return expected.length === received.length && timingSafeEqual(expected, received)
+    return verifyShopifyWebhookHmac(
+      rawBody,
+      hmacHeader,
+      this.config.get<string>('shopify.apiSecret'),
+    )
   }
 }

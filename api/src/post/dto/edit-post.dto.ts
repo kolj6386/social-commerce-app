@@ -1,4 +1,13 @@
-import { IsInt, IsNotEmpty, IsPositive, IsString, Matches, MaxLength, Min, MinLength } from 'class-validator'
+import {
+  IsInt,
+  IsNotEmpty,
+  IsPositive,
+  IsString,
+  Matches,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator'
 
 export class EditPostDto {
   @IsInt()

@@ -2,14 +2,13 @@ import { Controller, Get, Logger, Post, Query, Req, Res, UseGuards } from '@nest
 import { ConfigService } from '@nestjs/config'
 import type { Request, Response } from 'express'
 import { ShopService } from '../shop/shop.service'
+import {
+  type ShopifyOfflineTokenResponse,
+  toShopTokenCredentials,
+} from '../shop/shop-token.types'
 import { ShopifyAdminGuard } from '../admin/shopify-admin.guard'
 import { generateNonce, validateShopifyHmac } from './shopify-hmac.util'
 import { ShopifyCallbackQueryDto, ShopifyInstallQueryDto } from './dto/shopify-install-query.dto'
-
-interface ShopifyTokenResponse {
-  access_token: string
-  scope: string
-}
 
 @Controller('auth/shopify')
 export class AuthController {
@@ -39,13 +38,18 @@ export class AuthController {
       // server-side redirect just blanks out and loops. When loaded embedded (host present),
       // break out to the top-level window via App Bridge instead.
       if (query.host) {
-        this.logger.log(`[entry] no token + embedded — breaking out of iframe for OAuth — shop=${query.shop}`)
+        this.logger.log(
+          `[entry] no token + embedded — breaking out of iframe for OAuth — shop=${query.shop}`,
+        )
         return this.renderIframeBreakout(res, oauthUrl, query.shop)
       }
 
       this.logger.log(`[entry] no token (top-level) — redirecting to OAuth — shop=${query.shop}`)
       return res.redirect(oauthUrl)
     }
+
+    // Check if they have a plan if they don't redirect to the pricing page which is
+    // {{query.shop}}/charges/{{app name(e.g. 'social-commerce-public-dev')}}/pricing_plans
 
     const uiUrl = this.buildAppUiUrl(query.shop, query.host)
     this.logger.log(`[entry] already installed — redirecting to UI — shop=${query.shop}`)
@@ -72,9 +76,14 @@ export class AuthController {
     const sessionToken = (req.headers.authorization ?? '').replace('Bearer ', '').trim()
 
     try {
-      const { accessToken, scope } = await this.exchangeToken(shopDomain, sessionToken)
-      const shop = await this.shopService.upsertOnInstall(shopDomain, accessToken, scope)
-      this.logger.log(`[register] shop registered via token exchange — shop=${shopDomain}, shopId=${shop.id}`)
+      const token = await this.exchangeToken(shopDomain, sessionToken)
+      const shop = await this.shopService.upsertOnInstall(
+        shopDomain,
+        toShopTokenCredentials(token),
+      )
+      this.logger.log(
+        `[register] shop registered via token exchange — shop=${shopDomain}, shopId=${shop.id}, expiring=${!!token.refresh_token}`,
+      )
       return res.json({ success: true })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -100,13 +109,18 @@ export class AuthController {
   }
 
   @Get('callback')
-  async callback(@Query() query: ShopifyCallbackQueryDto, @Req() req: Request, @Res() res: Response) {
+  async callback(
+    @Query() query: ShopifyCallbackQueryDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
     this.logger.log(
       `[callback] start — shop=${query.shop}, host=${query.host}, hasCode=${!!query.code}`,
     )
 
     const clientSecret = this.config.get<string>('shopify.apiSecret')
-    const hmacValid = !!clientSecret && validateShopifyHmac(req.query as Record<string, string>, clientSecret)
+    const hmacValid =
+      !!clientSecret && validateShopifyHmac(req.query as Record<string, string>, clientSecret)
 
     if (!clientSecret) {
       this.logger.error('[callback] aborted — SHOPIFY_API_SECRET is not configured')
@@ -134,6 +148,7 @@ export class AuthController {
         client_id: clientId,
         client_secret: clientSecret,
         code: query.code,
+        expiring: '1',
       }),
     })
 
@@ -145,11 +160,16 @@ export class AuthController {
       return res.status(tokenResponse.status).send('Failed to retrieve access token')
     }
 
-    const tokenJson = (await tokenResponse.json()) as ShopifyTokenResponse
-    this.logger.log(`[callback] token received — shop=${query.shop}, scope=${tokenJson.scope}`)
+    const tokenJson = (await tokenResponse.json()) as ShopifyOfflineTokenResponse
+    this.logger.log(
+      `[callback] token received — shop=${query.shop}, scope=${tokenJson.scope}, expiring=${!!tokenJson.refresh_token}`,
+    )
 
-    const shop = await this.shopService.upsertOnInstall(query.shop, tokenJson.access_token, tokenJson.scope)
-    this.logger.log(`[callback] shop saved — shop=${query.shop}, shopId=${shop.id}, isActive=${shop.isActive}`)
+    const shop = await this.shopService.upsertOnInstall(
+      query.shop,
+      toShopTokenCredentials(tokenJson),
+    )
+    this.logger.log(`[callback] shop saved — shop=${query.shop}, shopId=${shop.id}`)
 
     // OAuth ran at the top level (we broke out of the iframe), so this callback is a full-page
     // load on the backend domain — NOT inside Shopify admin. Send the merchant back into the
@@ -157,7 +177,9 @@ export class AuthController {
     // now finds a token and forwards the iframe to the frontend UI (/app).
     const apiKey = this.config.get<string>('shopify.apiKey') ?? ''
     const reembedUrl = `https://${query.shop}/admin/apps/${apiKey}`
-    this.logger.log(`[callback] complete — re-embedding into admin — shop=${query.shop}, url=${reembedUrl}`)
+    this.logger.log(
+      `[callback] complete — re-embedding into admin — shop=${query.shop}, url=${reembedUrl}`,
+    )
     return res.redirect(reembedUrl)
   }
 
@@ -168,7 +190,7 @@ export class AuthController {
   private async exchangeToken(
     shop: string,
     sessionToken: string,
-  ): Promise<{ accessToken: string; scope: string }> {
+  ): Promise<ShopifyOfflineTokenResponse> {
     const clientId = this.config.get<string>('shopify.apiKey')
     const clientSecret = this.config.get<string>('shopify.apiSecret')
 
@@ -182,6 +204,7 @@ export class AuthController {
         subject_token: sessionToken,
         subject_token_type: 'urn:ietf:params:oauth:token-type:id_token',
         requested_token_type: 'urn:shopify:params:oauth:token-type:offline-access-token',
+        expiring: 1,
       }),
     })
 
@@ -190,8 +213,7 @@ export class AuthController {
       throw new Error(`token exchange ${response.status}: ${body}`)
     }
 
-    const json = (await response.json()) as ShopifyTokenResponse
-    return { accessToken: json.access_token, scope: json.scope }
+    return (await response.json()) as ShopifyOfflineTokenResponse
   }
 
   /** Builds the Shopify OAuth authorization URL the merchant must be sent to (top level). */

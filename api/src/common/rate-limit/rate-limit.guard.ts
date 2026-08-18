@@ -55,7 +55,8 @@ export class RateLimitGuard implements CanActivate {
 
   private resolveOptions(context: ExecutionContext, method: string): RateLimitOptions {
     const fromDecorator = this.reflector.getAllAndOverride<RateLimitOptions | undefined>(
-      RATE_LIMIT_METADATA_KEY,[context.getHandler(), context.getClass()],
+      RATE_LIMIT_METADATA_KEY,
+      [context.getHandler(), context.getClass()],
     )
 
     if (fromDecorator) {

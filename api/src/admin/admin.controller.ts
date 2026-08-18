@@ -16,7 +16,10 @@ export class AdminController {
   ) {}
 
   @Get('all')
-  async getAllPostsAndCommentsForReview(@Query() query: UnapprovedPostsQueryDto, @Headers('origin') origin?: string) {
+  async getAllPostsAndCommentsForReview(
+    @Query() query: UnapprovedPostsQueryDto,
+    @Headers('origin') origin?: string,
+  ) {
     if (!origin) {
       return new ApiResponse({
         success: false,

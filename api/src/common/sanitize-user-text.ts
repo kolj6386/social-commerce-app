@@ -1,9 +1,16 @@
-const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g
 const HTML_TAG = /<[^>]*>/g
+
+const stripControlChars = (value: string): string =>
+  [...value]
+    .filter((char) => {
+      const code = char.charCodeAt(0)
+      return !(code <= 0x1f || code === 0x7f)
+    })
+    .join('')
 
 /** Strip control chars and HTML tags from user-facing plain text. */
 export function sanitizePlainText(value: string): string {
-  return value.replace(CONTROL_CHARS, '').replace(HTML_TAG, '').trim()
+  return stripControlChars(value).replace(HTML_TAG, '').trim()
 }
 
 /** Keep only absolute https URLs (drops javascript:, data:, etc.). */

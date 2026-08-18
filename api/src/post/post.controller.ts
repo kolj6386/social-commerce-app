@@ -102,7 +102,11 @@ export class PostController {
   }
 
   @Post('increment-view/:postId')
-  async incrementPostView(@Body() dto: IncrementViewDto, @Req() req: Request, @Query('shop') shop: string) {
+  async incrementPostView(
+    @Body() dto: IncrementViewDto,
+    @Req() req: Request,
+    @Query('shop') shop: string,
+  ) {
     if (!shop) {
       return new ApiResponse({
         success: false,

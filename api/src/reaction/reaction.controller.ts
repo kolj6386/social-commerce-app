@@ -36,7 +36,10 @@ export class ReactionController {
   }
 
   @Post('comment-reaction')
-  async createReactionOnComment(@Body() dto: CreateCommentReactionDto, @Query('shop') shop: string) {
+  async createReactionOnComment(
+    @Body() dto: CreateCommentReactionDto,
+    @Query('shop') shop: string,
+  ) {
     if (!shop) {
       return new ApiResponse({
         success: false,

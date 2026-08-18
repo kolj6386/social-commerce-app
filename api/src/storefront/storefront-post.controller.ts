@@ -86,7 +86,11 @@ export class StorefrontPostController {
 
   @Post('increment-view/:postId')
   // prettier-ignore
-  async incrementPostView(@Body() dto: IncrementViewDto, @Req() req: Request, @Shop() shop: string) {
+  async incrementPostView(
+    @Body() dto: IncrementViewDto,
+    @Req() req: Request,
+    @Shop() shop: string,
+  ) {
     const ipAddress = req.ip ?? req.socket.remoteAddress
     const view = await this.postService.addPostView(dto, ipAddress, shop)
 
