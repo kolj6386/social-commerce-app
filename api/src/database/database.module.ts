@@ -25,11 +25,23 @@ const entities = [Post, Comment, PostReaction, CommentReaction, PostView, Shop]
         const password = config.get<string>('database.password')
         const port = config.get<number>('database.port')
         const synchronize = config.get<boolean>('database.synchronize') === true
+        const useSsl = config.get<boolean>('database.ssl') === true
+        const databaseUrl = config.get<string>('database.url')
+        const looksLikeManagedPg =
+          !!databaseUrl &&
+          (databaseUrl.includes('railway') ||
+            databaseUrl.includes('sslmode=require') ||
+            databaseUrl.includes('neon.tech') ||
+            databaseUrl.includes('supabase'))
+
+        const sslOption =
+          useSsl || looksLikeManagedPg ? { rejectUnauthorized: false } : undefined
 
         const baseOptions = {
           synchronize,
           connectionTimeout: 15_000,
           namingStrategy: new PascalCaseNamingStrategy(),
+          ...(sslOption ? { ssl: sslOption } : {}),
         }
 
         if (trustedConnection) {
@@ -42,7 +54,6 @@ const entities = [Post, Comment, PostReaction, CommentReaction, PostView, Shop]
           }
         }
 
-        const databaseUrl = config.get<string>('database.url')
         if (databaseUrl) {
           return {
             type: 'postgres' as const,

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { DataSource, Repository } from 'typeorm'
 import { parsePostMedia } from '../common/parse-post-media'
@@ -29,6 +30,7 @@ export class PostService {
     @InjectRepository(PostView)
     private readonly postViewRepository: Repository<PostView>,
     private readonly dataSource: DataSource,
+    private readonly config: ConfigService,
   ) {}
 
   async getAllAsync(
@@ -38,9 +40,31 @@ export class PostService {
     const pageNumber = query.pageNumber ?? 1
     const resultsPerPage = query.resultsPerPage ?? 10
     const approvedPosts = query.approvedPosts ?? true
+    const commentsPerPost = Math.max(0, this.config.get<number>('feedCommentsPerPost') ?? 5)
 
     const flatPosts = await this.dataSource.query<PostFlatRow[]>(
       `
+      WITH page_posts AS (
+        SELECT p."Id"
+        FROM "Posts" p
+        WHERE p."ShopId" = $1 AND p."ApprovedPost" = $2
+        ORDER BY p."PostCreated" DESC
+        OFFSET $3 LIMIT $4
+      ),
+      ranked_comments AS (
+        SELECT
+          c."Id",
+          c."PostId",
+          c."UserId",
+          c."Content",
+          c."CreatedAt",
+          ROW_NUMBER() OVER (
+            PARTITION BY c."PostId"
+            ORDER BY c."CreatedAt" DESC
+          ) AS "CommentRank"
+        FROM "Comments" c
+        INNER JOIN page_posts pp ON pp."Id" = c."PostId"
+      )
       SELECT 
           p."Id" AS "PostId", 
           p."UserId" AS "PostUserId",
@@ -62,30 +86,32 @@ export class PostService {
           cr."LoveCount" AS "CommentLoveCount",
           cr."LaughCount" AS "CommentLaughCount",
           cr."DislikeCount" AS "CommentDislikeCount"
-      FROM "Posts" p
-      LEFT JOIN "Comments" c ON p."Id" = c."PostId"
+      FROM page_posts pp
+      INNER JOIN "Posts" p ON p."Id" = pp."Id"
+      LEFT JOIN ranked_comments c
+        ON c."PostId" = p."Id" AND c."CommentRank" <= $5
       LEFT JOIN (
-          SELECT "PostId",
-              COUNT(*) FILTER (WHERE "Type" = 'like') AS "LikeCount",
-              COUNT(*) FILTER (WHERE "Type" = 'love') AS "LoveCount",
-              COUNT(*) FILTER (WHERE "Type" = 'laugh') AS "LaughCount",
-              COUNT(*) FILTER (WHERE "Type" = 'dislike') AS "DislikeCount"
-          FROM "PostReactions"
-          GROUP BY "PostId"
+          SELECT pr."PostId",
+              COUNT(*) FILTER (WHERE pr."Type" = 'like') AS "LikeCount",
+              COUNT(*) FILTER (WHERE pr."Type" = 'love') AS "LoveCount",
+              COUNT(*) FILTER (WHERE pr."Type" = 'laugh') AS "LaughCount",
+              COUNT(*) FILTER (WHERE pr."Type" = 'dislike') AS "DislikeCount"
+          FROM "PostReactions" pr
+          INNER JOIN page_posts pp2 ON pp2."Id" = pr."PostId"
+          GROUP BY pr."PostId"
       ) pr ON p."Id" = pr."PostId"
       LEFT JOIN (
-          SELECT "CommentId",
-              COUNT(*) FILTER (WHERE "Type" = 'like') AS "LikeCount",
-              COUNT(*) FILTER (WHERE "Type" = 'love') AS "LoveCount",
-              COUNT(*) FILTER (WHERE "Type" = 'laugh') AS "LaughCount",
-              COUNT(*) FILTER (WHERE "Type" = 'dislike') AS "DislikeCount"
-          FROM "CommentReactions"
-          GROUP BY "CommentId"
+          SELECT cr."CommentId",
+              COUNT(*) FILTER (WHERE cr."Type" = 'like') AS "LikeCount",
+              COUNT(*) FILTER (WHERE cr."Type" = 'love') AS "LoveCount",
+              COUNT(*) FILTER (WHERE cr."Type" = 'laugh') AS "LaughCount",
+              COUNT(*) FILTER (WHERE cr."Type" = 'dislike') AS "DislikeCount"
+          FROM "CommentReactions" cr
+          INNER JOIN ranked_comments rc ON rc."Id" = cr."CommentId" AND rc."CommentRank" <= $5
+          GROUP BY cr."CommentId"
       ) cr ON c."Id" = cr."CommentId"
-      WHERE p."ShopId" = $1 AND p."ApprovedPost" = $2
-      ORDER BY p."PostCreated" DESC
-      OFFSET $3 LIMIT $4`,
-      [shop, approvedPosts, (pageNumber - 1) * resultsPerPage, resultsPerPage],
+      ORDER BY p."PostCreated" DESC, c."CreatedAt" DESC NULLS LAST`,
+      [shop, approvedPosts, (pageNumber - 1) * resultsPerPage, resultsPerPage, commentsPerPost],
     )
 
     return this.groupFlatPosts(flatPosts ?? [])

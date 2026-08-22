@@ -7,6 +7,7 @@ import { CorsModule } from './cors/cors.module'
 import configuration from './config/configuration'
 import { DatabaseModule } from './database/database.module'
 import { CommentModule } from './comment/comment.module'
+import { HealthController } from './health/health.controller'
 import { PostModule } from './post/post.module'
 import { ReactionModule } from './reaction/reaction.module'
 import { StorefrontModule } from './storefront/storefront.module'
@@ -30,5 +31,6 @@ import { WebhookModule } from './webhook/webhook.module'
     StorefrontModule,
     WebhookModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

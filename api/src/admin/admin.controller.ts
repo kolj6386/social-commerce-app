@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Headers, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Post, Query, UseGuards } from '@nestjs/common'
 import { ApiResponse } from '../common/api-response'
 import { CommentService } from '../comment/comment.service'
 import { DeletePostBodyDto } from '../post/dto/delete-post.dto'
 import { PostReviewDto } from '../post/dto/post-review.dto'
 import { UnapprovedPostsQueryDto } from '../post/dto/unapproved-posts-query.dto'
 import { PostService } from '../post/post.service'
+import { AdminShop } from './admin-shop.decorator'
 import { ShopifyAdminGuard } from './shopify-admin.guard'
 
 @Controller('api/admin')
@@ -18,22 +19,15 @@ export class AdminController {
   @Get('all')
   async getAllPostsAndCommentsForReview(
     @Query() query: UnapprovedPostsQueryDto,
-    @Headers('origin') origin?: string,
+    @AdminShop() shop: string,
   ) {
-    if (!origin) {
-      return new ApiResponse({
-        success: false,
-        message: 'Origin header is missing',
-      })
-    }
-
     try {
       const { posts, hasNextPage: hasNextPagePosts } = await this.postService.getUnapprovedPosts(
         query,
-        origin,
+        shop,
       )
       const { comments, hasNextPage: hasNextPageComments } =
-        await this.commentService.getUnapprovedComments(query, origin)
+        await this.commentService.getUnapprovedComments(query, shop)
 
       return new ApiResponse({
         success: true,

@@ -1,0 +1,12 @@
+# Ignore local/dev artifacts — keep Dockerfile context lean
+node_modules
+npm-debug.log
+dist
+coverage
+.env
+.env.*
+!.env.example
+.git
+.gitignore
+*.md
+test

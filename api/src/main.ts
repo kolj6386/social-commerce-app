@@ -43,21 +43,27 @@ async function bootstrap() {
     }),
   )
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Social Commerce API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build()
-  const document = SwaggerModule.createDocument(app, swaggerConfig)
-  SwaggerModule.setup('swagger', app, document)
+  const enableSwagger =
+    process.env.ENABLE_SWAGGER === 'true' || process.env.NODE_ENV !== 'production'
+
+  if (enableSwagger) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Social Commerce API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build()
+    const document = SwaggerModule.createDocument(app, swaggerConfig)
+    SwaggerModule.setup('swagger', app, document)
+  }
 
   const port = parseInt(process.env.PORT ?? '5120', 10)
   app.set('trust proxy', true)
   await app.listen(port, '0.0.0.0')
 
-  const baseUrl = `http://localhost:${port}`
-  console.log(`API running at ${baseUrl}`)
-  console.log(`Swagger UI at ${baseUrl}/swagger`)
+  console.log(`API running on 0.0.0.0:${port}`)
+  if (enableSwagger) {
+    console.log(`Swagger UI at /swagger`)
+  }
 }
 
-bootstrap()
+void bootstrap()

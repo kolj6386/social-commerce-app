@@ -10,9 +10,11 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common'
 import type { Request } from 'express'
 import { ApiResponse } from '../common/api-response'
+import { PaidPlanGuard } from '../common/guards/paid-plan.guard'
 import { ContentQueryDto } from './dto/content-query.dto'
 import { CreatePostDto } from './dto/create-post.dto'
 import { DeletePostQueryDto } from './dto/delete-post.dto'
@@ -25,6 +27,7 @@ export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @Get('all')
+  @UseGuards(PaidPlanGuard)
   async getAllPosts(@Query() query: ContentQueryDto, @Query('shop') shop?: string) {
     if (!shop) {
       return new ApiResponse({
@@ -51,6 +54,7 @@ export class PostController {
   }
 
   @Get(':id')
+  @UseGuards(PaidPlanGuard)
   async getById(@Param('id', ParseIntPipe) id: number, @Query('shop') shop?: string) {
     if (!shop || !id) {
       return new ApiResponse({

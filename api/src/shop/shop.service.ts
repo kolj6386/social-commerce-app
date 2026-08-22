@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { DataSource, Repository } from 'typeorm'
+import { decryptSecret, encryptSecret } from '../common/crypto/secret-crypto'
 import { CorsOriginsService } from '../cors/cors-origins.service'
 import { Shop } from '../entities/shop.entity'
 import type { CustomerDataRequestWebhook } from './compliance.types'
@@ -51,6 +52,15 @@ export class ShopService {
   async hasActiveInstall(shopDomain: string): Promise<boolean> {
     const shop = await this.shopRepository.findOne({ where: { shopDomain } })
     return !!shop?.accessToken
+  }
+
+  /** True when Shopify App Pricing recorded a non-empty plan handle for this shop. */
+  async hasPaidPlan(shopDomain: string): Promise<boolean> {
+    const shop = await this.shopRepository.findOne({
+      where: { shopDomain },
+      select: ['id', 'subscriptionPlan'],
+    })
+    return !!shop?.subscriptionPlan?.trim()
   }
 
   async findByDomain(shopDomain: string): Promise<Shop | null> {
@@ -109,17 +119,21 @@ export class ShopService {
       shop.accessTokenExpiresAt.getTime() <= Date.now() + ACCESS_TOKEN_REFRESH_SKEW_MS
 
     if (!needsRefresh) {
-      return shop.accessToken
+      return this.revealSecret(shop.accessToken)
     }
 
     if (shop.refreshToken) {
       try {
-        const refreshed = await this.refreshOfflineToken(shopDomain, shop.refreshToken)
+        const plainRefresh = this.revealSecret(shop.refreshToken)
+        if (!plainRefresh) {
+          throw new Error('Missing refresh token')
+        }
+        const refreshed = await this.refreshOfflineToken(shopDomain, plainRefresh)
         this.applyTokenCredentials(shop, toShopTokenCredentials(refreshed))
         shop.updatedAt = new Date()
         await this.shopRepository.save(shop)
         this.logger.log(`[token] refreshed offline token — shop=${shopDomain}`)
-        return shop.accessToken
+        return this.revealSecret(shop.accessToken)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error'
         this.logger.warn(`[token] refresh failed — shop=${shopDomain}, error=${message}`)
@@ -128,12 +142,16 @@ export class ShopService {
 
     // Legacy non-expiring token (or refresh failed): one-time migrate via token exchange.
     try {
-      const migrated = await this.migrateToExpiringOfflineToken(shopDomain, shop.accessToken)
+      const plainAccess = this.revealSecret(shop.accessToken)
+      if (!plainAccess) {
+        return null
+      }
+      const migrated = await this.migrateToExpiringOfflineToken(shopDomain, plainAccess)
       this.applyTokenCredentials(shop, toShopTokenCredentials(migrated))
       shop.updatedAt = new Date()
       await this.shopRepository.save(shop)
       this.logger.log(`[token] migrated to expiring offline token — shop=${shopDomain}`)
-      return shop.accessToken
+      return this.revealSecret(shop.accessToken)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       this.logger.error(`[token] migrate to expiring failed — shop=${shopDomain}, error=${message}`)
@@ -198,11 +216,22 @@ export class ShopService {
   }
 
   private applyTokenCredentials(shop: Shop, credentials: ShopTokenCredentials): void {
-    shop.accessToken = credentials.accessToken
+    const key = this.config.get<string>('tokenEncryptionKey')
+    shop.accessToken = encryptSecret(credentials.accessToken, key)
     shop.refreshToken = credentials.refreshToken
+      ? encryptSecret(credentials.refreshToken, key)
+      : null
     shop.accessTokenExpiresAt = credentials.accessTokenExpiresAt
     shop.refreshTokenExpiresAt = credentials.refreshTokenExpiresAt
     shop.scopes = credentials.scopes
+  }
+
+  private revealSecret(stored: string | null | undefined): string | null {
+    if (!stored) {
+      return null
+    }
+    const key = this.config.get<string>('tokenEncryptionKey')
+    return decryptSecret(stored, key)
   }
 
   private async refreshOfflineToken(

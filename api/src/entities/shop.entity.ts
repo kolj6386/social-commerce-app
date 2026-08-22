@@ -9,7 +9,7 @@ export class Shop {
   @Column({ name: 'ShopDomain', unique: true })
   shopDomain: string
 
-  // TODO: Encrypt this column offline?
+  // Encrypted at rest when TOKEN_ENCRYPTION_KEY is set (see secret-crypto.ts).
   @Column({ name: 'AccessToken' })
   accessToken: string
 

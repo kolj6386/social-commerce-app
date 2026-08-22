@@ -15,6 +15,7 @@ import type { Request } from 'express'
 import { Shop } from '../auth/shop.decorator'
 import { ShopifyAppProxyGuard } from '../auth/shopify-app-proxy.guard'
 import { ApiResponse } from '../common/api-response'
+import { PaidPlanGuard } from '../common/guards/paid-plan.guard'
 import { RateLimitGuard } from '../common/rate-limit/rate-limit.guard'
 import { ContentQueryDto } from '../post/dto/content-query.dto'
 import { CreatePostDto } from '../post/dto/create-post.dto'
@@ -29,6 +30,7 @@ export class StorefrontPostController {
   constructor(private readonly postService: PostService) {}
 
   @Get('all')
+  @UseGuards(PaidPlanGuard)
   async getAllPosts(@Query() query: ContentQueryDto, @Shop() shop: string) {
     const content = await this.postService.getAllAsync(query, shop)
 
@@ -48,6 +50,7 @@ export class StorefrontPostController {
   }
 
   @Get(':id')
+  @UseGuards(PaidPlanGuard)
   async getById(@Param('id', ParseIntPipe) id: number, @Shop() shop: string) {
     const post = await this.postService.getById(id, shop)
 
