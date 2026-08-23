@@ -35,7 +35,13 @@ export class WebhookController {
     }
 
     this.logger.log(`[webhook] uninstalled — shop=${shopDomain}`)
-    await this.shopService.purgeShopData(shopDomain)
+    try {
+      await this.shopService.purgeShopData(shopDomain)
+    } catch (err) {
+      // Always 200 after valid HMAC so Shopify doesn't retry-storm on transient DB errors.
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      this.logger.error(`[webhook] uninstalled purge failed — shop=${shopDomain}, error=${message}`)
+    }
     return { success: true }
   }
 

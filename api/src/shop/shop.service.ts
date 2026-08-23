@@ -370,21 +370,21 @@ export class ShopService {
       const postReactionsResult = await manager.query(
         `
         DELETE FROM "PostReactions"
-        WHERE "PostId" IN (SELECT "Id" FROM "Posts" WHERE "ShopId" = $1)`,
+        WHERE "PostId" IN (SELECT "Id" FROM "Posts" WHERE "Shop" = $1)`,
         [shopDomain],
       )
 
       const postViewsResult = await manager.query(
         `
         DELETE FROM "PostViews"
-        WHERE "PostId" IN (SELECT "Id" FROM "Posts" WHERE "ShopId" = $1)`,
+        WHERE "PostId" IN (SELECT "Id" FROM "Posts" WHERE "Shop" = $1)`,
         [shopDomain],
       )
 
       const commentsResult = await manager.query(`DELETE FROM "Comments" WHERE "ShopId" = $1`, [
         shopDomain,
       ])
-      const postsResult = await manager.query(`DELETE FROM "Posts" WHERE "ShopId" = $1`, [
+      const postsResult = await manager.query(`DELETE FROM "Posts" WHERE "Shop" = $1`, [
         shopDomain,
       ])
       const shopsResult = await manager.query(`DELETE FROM "Shops" WHERE "ShopDomain" = $1`, [
@@ -414,7 +414,7 @@ export class ShopService {
   async exportCustomerData(shopDomain: string, userId: number): Promise<CustomerDataExport> {
     const [posts, comments, postReactions, commentReactions, postViews] = await Promise.all([
       this.dataSource.query<Record<string, unknown>[]>(
-        `SELECT * FROM "Posts" WHERE "ShopId" = $1 AND "UserId" = $2`,
+        `SELECT * FROM "Posts" WHERE "Shop" = $1 AND "UserId" = $2`,
         [shopDomain, userId],
       ),
       this.dataSource.query<Record<string, unknown>[]>(
@@ -426,7 +426,7 @@ export class ShopService {
         SELECT pr.*
         FROM "PostReactions" pr
         INNER JOIN "Posts" p ON p."Id" = pr."PostId"
-        WHERE p."ShopId" = $1 AND pr."UserId" = $2`,
+        WHERE p."Shop" = $1 AND pr."UserId" = $2`,
         [shopDomain, userId],
       ),
       this.dataSource.query<Record<string, unknown>[]>(
@@ -442,7 +442,7 @@ export class ShopService {
         SELECT pv.*
         FROM "PostViews" pv
         INNER JOIN "Posts" p ON p."Id" = pv."PostId"
-        WHERE p."ShopId" = $1 AND pv."UserId" = $2`,
+        WHERE p."Shop" = $1 AND pv."UserId" = $2`,
         [shopDomain, userId],
       ),
     ])
@@ -473,7 +473,7 @@ export class ShopService {
         DELETE FROM "PostReactions" pr
         USING "Posts" p
         WHERE pr."PostId" = p."Id"
-          AND p."ShopId" = $1
+          AND p."Shop" = $1
           AND pr."UserId" = $2`,
         [shopDomain, userId],
       )
@@ -483,7 +483,7 @@ export class ShopService {
         DELETE FROM "PostViews" pv
         USING "Posts" p
         WHERE pv."PostId" = p."Id"
-          AND p."ShopId" = $1
+          AND p."Shop" = $1
           AND pv."UserId" = $2`,
         [shopDomain, userId],
       )
@@ -494,7 +494,7 @@ export class ShopService {
       )
 
       const postsResult = await manager.query(
-        `DELETE FROM "Posts" WHERE "ShopId" = $1 AND "UserId" = $2`,
+        `DELETE FROM "Posts" WHERE "Shop" = $1 AND "UserId" = $2`,
         [shopDomain, userId],
       )
 

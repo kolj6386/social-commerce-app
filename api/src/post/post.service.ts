@@ -47,7 +47,7 @@ export class PostService {
       WITH page_posts AS (
         SELECT p."Id"
         FROM "Posts" p
-        WHERE p."ShopId" = $1 AND p."ApprovedPost" = $2
+        WHERE p."Shop" = $1 AND p."ApprovedPost" = $2
         ORDER BY p."PostCreated" DESC
         OFFSET $3 LIMIT $4
       ),
@@ -164,7 +164,7 @@ export class PostService {
           FROM "CommentReactions"
           GROUP BY "CommentId"
       ) cr ON c."Id" = cr."CommentId"
-      WHERE p."ShopId" = $1 AND p."Id" = $2`,
+      WHERE p."Shop" = $1 AND p."Id" = $2`,
       [shop, id],
     )
 
@@ -200,7 +200,7 @@ export class PostService {
 
     // TODO Check if the post exists before continuing
     const postExists = await this.dataSource.query<PostView[]>(
-      `SELECT * FROM "Posts" WHERE "Id" = $1 AND "ShopId" = $2`,
+      `SELECT * FROM "Posts" WHERE "Id" = $1 AND "Shop" = $2`,
       [query.postId, shop],
     )
 
@@ -269,7 +269,7 @@ export class PostService {
       `
       UPDATE "Posts"
       SET "PostContent" = $1
-      WHERE "Id" = $2 AND "UserId" = $3 AND "ShopId" = $4
+      WHERE "Id" = $2 AND "UserId" = $3 AND "Shop" = $4
       RETURNING *`,
       [sanitizePlainText(dto.postContent), dto.postId, dto.userid, shop],
     )
@@ -281,7 +281,7 @@ export class PostService {
     const deleted = await this.dataSource.query<Post[]>(
       `
       DELETE FROM "Posts"
-      WHERE "Id" = $1 AND "UserId" = $2 AND "ShopId" = $3
+      WHERE "Id" = $1 AND "UserId" = $2 AND "Shop" = $3
       RETURNING *`,
       [query.postId, query.userId, shop],
     )
@@ -337,14 +337,14 @@ export class PostService {
           p."PostCreated",
           p."PostMedia"
       FROM "Posts" p
-      WHERE p."ShopId" = $1 AND p."ApprovedPost" = false
+      WHERE p."Shop" = $1 AND p."ApprovedPost" = false
       ORDER BY p."PostCreated" DESC
       OFFSET $2 LIMIT $3`,
       [shopId, (pageNumber - 1) * resultsPerPage, resultsPerPage],
     )
 
     const totalResult = await this.dataSource.query<{ count: number }[]>(
-      `SELECT COUNT(*) AS count FROM "Posts" WHERE "ShopId" = $1 AND "ApprovedPost" = false`,
+      `SELECT COUNT(*) AS count FROM "Posts" WHERE "Shop" = $1 AND "ApprovedPost" = false`,
       [shopId],
     )
     const totalPosts = totalResult?.[0]?.count ?? 0

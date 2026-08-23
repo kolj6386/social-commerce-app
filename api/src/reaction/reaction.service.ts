@@ -30,7 +30,7 @@ export class ReactionService {
 
   async createReactionOnPost(dto: CreateReactionDto, shop: string): Promise<boolean> {
     const postExists = await this.dataSource.query<{ exists: number }[]>(
-      `SELECT 1 AS "exists" FROM "Posts" WHERE "Id" = $1 AND "ShopId" = $2 LIMIT 1`,
+      `SELECT 1 AS "exists" FROM "Posts" WHERE "Id" = $1 AND "Shop" = $2 LIMIT 1`,
       [dto.postId, shop],
     )
 
@@ -84,7 +84,7 @@ export class ReactionService {
 
   async deleteReactionOnPost(dto: DeleteReactionDto, shop: string): Promise<boolean> {
     const postExists = await this.dataSource.query<{ exists: number }[]>(
-      `SELECT 1 AS "exists" FROM "Posts" WHERE "Id" = $1 AND "ShopId" = $2 LIMIT 1`,
+      `SELECT 1 AS "exists" FROM "Posts" WHERE "Id" = $1 AND "Shop" = $2 LIMIT 1`,
       [dto.postId, shop],
     )
 
