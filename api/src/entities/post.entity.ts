@@ -6,10 +6,12 @@ export class Post {
   @PrimaryGeneratedColumn({ name: 'Id' })
   id: number
 
-  @Column({ name: 'ProductId' })
+  /** Shopify product id — must be bigint (exceeds Postgres integer). */
+  @Column({ name: 'ProductId', type: 'bigint' })
   productId: number
 
-  @Column({ name: 'UserId' })
+  /** Shopify customer id (0 for guests) — must be bigint. */
+  @Column({ name: 'UserId', type: 'bigint' })
   userId: number
 
   @Column({ name: 'FirstName' })

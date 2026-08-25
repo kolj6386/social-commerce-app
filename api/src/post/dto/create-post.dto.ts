@@ -38,8 +38,7 @@ export class CreatePostDto {
   productId: number
 
   @IsInt()
-  @IsPositive()
-  @Min(1)
+  @Min(0)
   userId: number
 
   @IsArray()

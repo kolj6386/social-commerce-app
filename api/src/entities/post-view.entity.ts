@@ -9,7 +9,8 @@ export class PostView {
   @Column({ name: 'PostId' })
   postId: number
 
-  @Column({ name: 'UserId', type: 'int', nullable: true })
+  /** Shopify customer id — must be bigint (null for guests). */
+  @Column({ name: 'UserId', type: 'bigint', nullable: true })
   userId: number | null
 
   @Column({ name: 'IpAddress' })

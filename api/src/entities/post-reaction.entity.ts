@@ -10,7 +10,8 @@ export class PostReaction {
   @Column({ name: 'PostId' })
   postId: number
 
-  @Column({ name: 'UserId' })
+  /** Shopify customer id — must be bigint. */
+  @Column({ name: 'UserId', type: 'bigint' })
   userId: number
 
   @Column({ name: 'Type' })
