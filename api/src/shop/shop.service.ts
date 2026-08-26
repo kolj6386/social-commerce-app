@@ -11,6 +11,11 @@ import {
   type ShopifyOfflineTokenResponse,
   toShopTokenCredentials,
 } from './shop-token.types'
+import {
+  DEFAULT_SHOP_SETTINGS,
+  type ShopSettings,
+} from './shop-settings'
+import type { UpdateShopSettingsDto } from './dto/update-shop-settings.dto'
 
 interface QueryResultWithCount {
   1?: number
@@ -92,6 +97,10 @@ export class ShopService {
       subscriptionPlan: null,
       trialEndsAt: null,
       isActive: true,
+      allowGuestPosting: DEFAULT_SHOP_SETTINGS.allowGuestPosting,
+      autoApproveLoggedInPosts: DEFAULT_SHOP_SETTINGS.autoApproveLoggedInPosts,
+      notificationsEnabled: DEFAULT_SHOP_SETTINGS.notificationsEnabled,
+      languageFilter: DEFAULT_SHOP_SETTINGS.languageFilter,
       installedAt: now,
       uninstalledAt: null,
       updatedAt: now,
@@ -157,6 +166,62 @@ export class ShopService {
       this.logger.error(`[token] migrate to expiring failed — shop=${shopDomain}, error=${message}`)
       return null
     }
+  }
+
+  async getSettings(shopDomain: string): Promise<ShopSettings> {
+    const shop = await this.shopRepository.findOne({
+      where: { shopDomain },
+      select: [
+        'id',
+        'allowGuestPosting',
+        'autoApproveLoggedInPosts',
+        'notificationsEnabled',
+        'languageFilter',
+      ],
+    })
+
+    if (!shop) {
+      return { ...DEFAULT_SHOP_SETTINGS }
+    }
+
+    return {
+      allowGuestPosting: shop.allowGuestPosting ?? DEFAULT_SHOP_SETTINGS.allowGuestPosting,
+      autoApproveLoggedInPosts:
+        shop.autoApproveLoggedInPosts ?? DEFAULT_SHOP_SETTINGS.autoApproveLoggedInPosts,
+      notificationsEnabled:
+        shop.notificationsEnabled ?? DEFAULT_SHOP_SETTINGS.notificationsEnabled,
+      languageFilter: shop.languageFilter ?? DEFAULT_SHOP_SETTINGS.languageFilter,
+    }
+  }
+
+  async updateSettings(
+    shopDomain: string,
+    dto: UpdateShopSettingsDto,
+  ): Promise<ShopSettings | null> {
+    const shop = await this.shopRepository.findOne({ where: { shopDomain } })
+    if (!shop) {
+      this.logger.warn(`[settings] cannot update — unknown shop=${shopDomain}`)
+      return null
+    }
+
+    if (dto.allowGuestPosting !== undefined) {
+      shop.allowGuestPosting = dto.allowGuestPosting
+    }
+    if (dto.autoApproveLoggedInPosts !== undefined) {
+      shop.autoApproveLoggedInPosts = dto.autoApproveLoggedInPosts
+    }
+    if (dto.notificationsEnabled !== undefined) {
+      shop.notificationsEnabled = dto.notificationsEnabled
+    }
+    if (dto.languageFilter !== undefined) {
+      shop.languageFilter = dto.languageFilter
+    }
+
+    shop.updatedAt = new Date()
+    await this.shopRepository.save(shop)
+    this.logger.log(`[settings] updated — shop=${shopDomain}`)
+
+    return this.getSettings(shopDomain)
   }
 
   async updateSubscriptionPlan(

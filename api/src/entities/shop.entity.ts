@@ -40,6 +40,22 @@ export class Shop {
   @Column({ name: 'IsActive' })
   isActive: boolean
 
+  /** When false, storefront rejects posts/comments from userId 0 (guests). */
+  @Column({ name: 'AllowGuestPosting', default: false })
+  allowGuestPosting: boolean
+
+  /** When true, posts/comments from logged-in customers (userId > 0) are approved on create. */
+  @Column({ name: 'AutoApproveLoggedInPosts', default: false })
+  autoApproveLoggedInPosts: boolean
+
+  /** When true, merchant should be notified on new post/comment (email wiring TBD). */
+  @Column({ name: 'NotificationsEnabled', default: false })
+  notificationsEnabled: boolean
+
+  /** Comma-separated extra blocked phrases; content containing any is rejected. */
+  @Column({ name: 'LanguageFilter', type: 'text', default: '' })
+  languageFilter: string
+
   @Column({ name: 'InstalledAt', type: 'timestamp' })
   installedAt: Date
 

@@ -4,8 +4,7 @@ import { IsInt, IsNotEmpty, IsPositive, IsString, Matches, Min } from 'class-val
 export class CreateCommentQueryDto {
   @Type(() => Number)
   @IsInt()
-  @IsPositive()
-  @Min(1)
+  @Min(0)
   userid: number
 
   @Type(() => Number)

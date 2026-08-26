@@ -10,6 +10,7 @@ import { ShopModule } from '../shop/shop.module'
 import { StorefrontCommentController } from './storefront-comment.controller'
 import { StorefrontPostController } from './storefront-post.controller'
 import { StorefrontReactionController } from './storefront-reaction.controller'
+import { StorefrontSettingsController } from './storefront-settings.controller'
 
 @Module({
   imports: [PostModule, CommentModule, ReactionModule, RateLimitModule, ShopModule],
@@ -17,6 +18,7 @@ import { StorefrontReactionController } from './storefront-reaction.controller'
     StorefrontPostController,
     StorefrontCommentController,
     StorefrontReactionController,
+    StorefrontSettingsController,
   ],
   providers: [ShopifyAppProxyGuard, RateLimitGuard, PaidPlanGuard],
 })

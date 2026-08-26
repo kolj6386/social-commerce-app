@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
   Param,
   ParseIntPipe,
   Patch,
@@ -78,6 +79,12 @@ export class StorefrontPostController {
         data: { userId: post.userId, id: post.id },
       })
     } catch (error) {
+      if (error instanceof HttpException) {
+        return new ApiResponse({
+          success: false,
+          message: error.message,
+        })
+      }
       const message = error instanceof Error ? error.message : 'Unknown error'
       return new ApiResponse({
         success: false,

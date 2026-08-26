@@ -31,7 +31,7 @@ export class CommentController {
     }
 
     try {
-      const commentModel = this.commentService.createFromQuery(query, shop)
+      const commentModel = await this.commentService.createFromQuery(query, shop)
       const comment = await this.commentService.createCommentOnPost(commentModel)
 
       return new ApiResponse({

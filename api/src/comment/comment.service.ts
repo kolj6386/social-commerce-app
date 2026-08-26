@@ -1,9 +1,16 @@
-import { Injectable } from '@nestjs/common'
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { DataSource, Repository } from 'typeorm'
 import { sanitizePlainText } from '../common/sanitize-user-text'
 import { Comment } from '../entities/comment.entity'
 import { UnapprovedPostsQueryDto } from '../post/dto/unapproved-posts-query.dto'
+import { containsBlockedLanguage } from '../shop/shop-settings'
+import { ShopService } from '../shop/shop.service'
 import { CreateCommentQueryDto } from './dto/create-comment-query.dto'
 import { DeleteCommentQueryDto } from './dto/delete-comment-query.dto'
 import { EditCommentDto } from './dto/edit-comment.dto'
@@ -17,19 +24,34 @@ export interface UnapprovedCommentDto {
 
 @Injectable()
 export class CommentService {
+  private readonly logger = new Logger(CommentService.name)
+
   constructor(
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
     private readonly dataSource: DataSource,
+    private readonly shopService: ShopService,
   ) {}
 
-  createFromQuery(dto: CreateCommentQueryDto, shop: string): Comment {
+  async createFromQuery(dto: CreateCommentQueryDto, shop: string): Promise<Comment> {
+    const settings = await this.shopService.getSettings(shop)
+    const isGuest = !dto.userid || dto.userid <= 0
+
+    if (isGuest && !settings.allowGuestPosting) {
+      throw new ForbiddenException('Guest commenting is disabled for this store')
+    }
+
+    const content = sanitizePlainText(dto.commentContent)
+    if (containsBlockedLanguage(content, settings.languageFilter)) {
+      throw new BadRequestException('Comment content was blocked by the language filter')
+    }
+
     return this.commentRepository.create({
       userId: dto.userid,
       postId: dto.postId,
-      content: sanitizePlainText(dto.commentContent),
+      content,
       createdAt: new Date(),
-      approvedComment: false,
+      approvedComment: !isGuest && settings.autoApproveLoggedInPosts,
       shopId: shop,
     })
   }
@@ -62,7 +84,15 @@ export class CommentService {
       ],
     )
 
-    return inserted[0]
+    const saved = inserted[0]
+    const settings = await this.shopService.getSettings(comment.shopId)
+    if (settings.notificationsEnabled) {
+      this.logger.log(
+        `[notifications] new comment — shop=${comment.shopId}, commentId=${saved?.id}, postId=${comment.postId}`,
+      )
+    }
+
+    return saved
   }
 
   async editComment(dto: EditCommentDto, shop: string): Promise<Comment | null> {

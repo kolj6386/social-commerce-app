@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common'
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InjectRepository } from '@nestjs/typeorm'
 import { DataSource, Repository } from 'typeorm'
@@ -6,6 +11,8 @@ import { parsePostMedia } from '../common/parse-post-media'
 import { sanitizeHttpsUrls, sanitizePlainText } from '../common/sanitize-user-text'
 import { Post } from '../entities/post.entity'
 import { PostView } from '../entities/post-view.entity'
+import { containsBlockedLanguage } from '../shop/shop-settings'
+import { ShopService } from '../shop/shop.service'
 import { ContentQueryDto } from './dto/content-query.dto'
 import { CreatePostDto } from './dto/create-post.dto'
 import { DeletePostBodyDto, DeletePostQueryDto } from './dto/delete-post.dto'
@@ -31,6 +38,7 @@ export class PostService {
     private readonly postViewRepository: Repository<PostView>,
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
+    private readonly shopService: ShopService,
   ) {}
 
   async getAllAsync(
@@ -64,6 +72,7 @@ export class PostService {
           ) AS "CommentRank"
         FROM "Comments" c
         INNER JOIN page_posts pp ON pp."Id" = c."PostId"
+        WHERE c."ApprovedComment" = true
       )
       SELECT 
           p."Id" AS "PostId", 
@@ -145,7 +154,7 @@ export class PostService {
           cr."LaughCount" AS "CommentLaughCount",
           cr."DislikeCount" AS "CommentDislikeCount"
       FROM "Posts" p
-      LEFT JOIN "Comments" c ON p."Id" = c."PostId"
+      LEFT JOIN "Comments" c ON p."Id" = c."PostId" AND c."ApprovedComment" = true
       LEFT JOIN (
           SELECT "PostId",
               COUNT(*) FILTER (WHERE "Type" = 'like') AS "LikeCount",
@@ -173,20 +182,42 @@ export class PostService {
   }
 
   async createPost(dto: CreatePostDto, shop: string): Promise<Post> {
+    const settings = await this.shopService.getSettings(shop)
+    const isGuest = !dto.userId || dto.userId <= 0
+
+    if (isGuest && !settings.allowGuestPosting) {
+      throw new ForbiddenException('Guest posting is disabled for this store')
+    }
+
+    const postContent = sanitizePlainText(dto.postContent)
+    if (containsBlockedLanguage(postContent, settings.languageFilter)) {
+      throw new BadRequestException('Post content was blocked by the language filter')
+    }
+
+    const approvedPost = !isGuest && settings.autoApproveLoggedInPosts
+
     const post = this.postRepository.create({
       productId: dto.productId,
       userId: dto.userId,
       firstName: sanitizePlainText(dto.firstName),
       lastName: sanitizePlainText(dto.lastName),
-      postContent: sanitizePlainText(dto.postContent),
+      postContent,
       postCreated: new Date(),
       postMedia: JSON.stringify(sanitizeHttpsUrls(dto.postMedia ?? [])),
       postViews: 0,
       shop,
-      approvedPost: false,
+      approvedPost,
     })
 
-    return this.postRepository.save(post)
+    const saved = await this.postRepository.save(post)
+
+    if (settings.notificationsEnabled) {
+      this.logger.log(
+        `[notifications] new post — shop=${shop}, postId=${saved.id}, approved=${approvedPost}`,
+      )
+    }
+
+    return saved
   }
 
   async addPostView(

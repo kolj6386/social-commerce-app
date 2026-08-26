@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Patch, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, HttpException, Patch, Post, Query, UseGuards } from '@nestjs/common'
 import { Shop } from '../auth/shop.decorator'
 import { ShopifyAppProxyGuard } from '../auth/shopify-app-proxy.guard'
 import { ApiResponse } from '../common/api-response'
@@ -29,7 +29,7 @@ export class StorefrontCommentController {
     }
 
     try {
-      const commentModel = this.commentService.createFromQuery(query, shop)
+      const commentModel = await this.commentService.createFromQuery(query, shop)
       const comment = await this.commentService.createCommentOnPost(commentModel)
 
       return new ApiResponse({
@@ -38,6 +38,12 @@ export class StorefrontCommentController {
         data: { postId: comment.postId, id: comment.id },
       })
     } catch (error) {
+      if (error instanceof HttpException) {
+        return new ApiResponse({
+          success: false,
+          message: error.message,
+        })
+      }
       const message = error instanceof Error ? error.message : 'Unknown error'
       return new ApiResponse({
         success: false,
