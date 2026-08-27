@@ -49,6 +49,8 @@ export class CommentService {
     return this.commentRepository.create({
       userId: dto.userid,
       postId: dto.postId,
+      firstName: sanitizePlainText(dto.firstName ?? ''),
+      lastName: sanitizePlainText(dto.lastName ?? ''),
       content,
       createdAt: new Date(),
       approvedComment: !isGuest && settings.autoApproveLoggedInPosts,

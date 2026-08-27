@@ -64,6 +64,8 @@ export class PostService {
           c."Id",
           c."PostId",
           c."UserId",
+          c."FirstName",
+          c."LastName",
           c."Content",
           c."CreatedAt",
           ROW_NUMBER() OVER (
@@ -85,6 +87,8 @@ export class PostService {
           p."PostMedia",
           c."Id" AS "CommentId",
           c."UserId" AS "CommentUserId",
+          c."FirstName" AS "CommentFirstName",
+          c."LastName" AS "CommentLastName",
           c."Content" AS "CommentContent",
           c."CreatedAt" AS "CommentCreated",
           pr."LikeCount" AS "PostLikeCount",
@@ -143,6 +147,8 @@ export class PostService {
           p."PostMedia",
           c."Id" AS "CommentId",
           c."UserId" AS "CommentUserId",
+          c."FirstName" AS "CommentFirstName",
+          c."LastName" AS "CommentLastName",
           c."Content" AS "CommentContent",
           c."CreatedAt" AS "CommentCreated",
           pr."LikeCount" AS "PostLikeCount",
@@ -411,6 +417,8 @@ export class PostService {
         return {
           id: commentId,
           userId: commentFirst.CommentUserId ?? 0,
+          firstName: commentFirst.CommentFirstName ?? '',
+          lastName: commentFirst.CommentLastName ?? '',
           content: commentFirst.CommentContent ?? '',
           createdAt: commentFirst.CommentCreated ?? new Date(0),
           reactions: {

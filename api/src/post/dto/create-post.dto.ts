@@ -1,7 +1,6 @@
 import {
   IsArray,
   IsInt,
-  IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
@@ -13,16 +12,12 @@ import {
 
 export class CreatePostDto {
   @IsString()
-  @MinLength(1)
   @MaxLength(100)
-  @IsNotEmpty()
   @Matches(/^[^<>]*$/, { message: 'HTML is not allowed' })
   firstName: string
 
   @IsString()
-  @MinLength(1)
   @MaxLength(100)
-  @IsNotEmpty()
   @Matches(/^[^<>]*$/, { message: 'HTML is not allowed' })
   lastName: string
 

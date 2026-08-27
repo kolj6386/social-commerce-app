@@ -16,6 +16,8 @@ export interface PostFlatRow {
   PostMedia: string
   CommentId: number | null
   CommentUserId: number | null
+  CommentFirstName: string | null
+  CommentLastName: string | null
   CommentContent: string | null
   CommentCreated: Date | null
   CommentLikeCount: number | null
@@ -31,6 +33,8 @@ export interface PostFlatRow {
 export interface CommentDto {
   id: number
   userId: number
+  firstName: string
+  lastName: string
   content: string
   createdAt: Date
   reactions: Record<CommentReactionFields, number>

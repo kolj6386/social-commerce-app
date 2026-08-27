@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer'
-import { IsInt, IsNotEmpty, IsPositive, IsString, Matches, Min } from 'class-validator'
+import { IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, Matches, MaxLength, Min } from 'class-validator'
 
 export class CreateCommentQueryDto {
   @Type(() => Number)
@@ -17,4 +17,16 @@ export class CreateCommentQueryDto {
   @IsNotEmpty()
   @Matches(/^[^<>]*$/, { message: 'HTML is not allowed' })
   commentContent: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[^<>]*$/, { message: 'HTML is not allowed' })
+  firstName?: string
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[^<>]*$/, { message: 'HTML is not allowed' })
+  lastName?: string
 }
