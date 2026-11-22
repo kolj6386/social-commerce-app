@@ -21,6 +21,7 @@ import { IncrementViewDto } from './dto/increment-view.dto'
 import { PostReviewDto } from './dto/post-review.dto'
 import { UnapprovedPostsQueryDto } from './dto/unapproved-posts-query.dto'
 import {
+  AdminPostDto,
   CommentDto,
   PostFlatRow,
   PostWithReactionsAndCommentsDto,
@@ -368,11 +369,13 @@ export class PostService {
       `
       SELECT 
           p."Id", 
+          p."ProductId",
           p."FirstName", 
           p."LastName", 
           p."PostContent", 
           p."PostCreated",
-          p."PostMedia"
+          p."PostMedia",
+          p."ApprovedPost"
       FROM "Posts" p
       WHERE p."Shop" = $1 AND p."ApprovedPost" = false
       ORDER BY p."PostCreated" DESC
@@ -388,6 +391,73 @@ export class PostService {
     const hasNextPage = pageNumber * resultsPerPage < totalPosts
 
     return { posts: posts ?? [], hasNextPage }
+  }
+
+  async getAdminPosts(
+    query: {
+      pageNumber?: number
+      resultsPerPage?: number
+      status?: 'all' | 'pending'
+    },
+    shopId: string,
+  ): Promise<{ posts: AdminPostDto[]; hasNextPage: boolean }> {
+    const pageNumber = query.pageNumber ?? 1
+    const resultsPerPage = query.resultsPerPage ?? 20
+    const pendingOnly = query.status === 'pending'
+
+    const rows = await this.dataSource.query<
+      {
+        Id: number
+        ProductId: number | string
+        FirstName: string
+        LastName: string
+        PostContent: string
+        PostCreated: Date
+        PostMedia: string
+        ApprovedPost: boolean
+      }[]
+    >(
+      `
+      SELECT 
+          p."Id", 
+          p."ProductId",
+          p."FirstName", 
+          p."LastName", 
+          p."PostContent", 
+          p."PostCreated",
+          p."PostMedia",
+          p."ApprovedPost"
+      FROM "Posts" p
+      WHERE p."Shop" = $1
+        AND ($2::boolean = false OR p."ApprovedPost" = false)
+      ORDER BY p."PostCreated" DESC
+      OFFSET $3 LIMIT $4`,
+      [shopId, pendingOnly, (pageNumber - 1) * resultsPerPage, resultsPerPage],
+    )
+
+    const totalResult = await this.dataSource.query<{ count: number }[]>(
+      `
+      SELECT COUNT(*) AS count
+      FROM "Posts"
+      WHERE "Shop" = $1
+        AND ($2::boolean = false OR "ApprovedPost" = false)`,
+      [shopId, pendingOnly],
+    )
+    const totalPosts = Number(totalResult?.[0]?.count ?? 0)
+    const hasNextPage = pageNumber * resultsPerPage < totalPosts
+
+    const posts: AdminPostDto[] = (rows ?? []).map((row) => ({
+      id: Number(row.Id),
+      productId: Number(row.ProductId),
+      firstName: row.FirstName ?? '',
+      lastName: row.LastName ?? '',
+      postContent: row.PostContent ?? '',
+      postCreated: row.PostCreated,
+      postMedia: parsePostMedia(row.PostMedia),
+      approvedPost: Boolean(row.ApprovedPost),
+    }))
+
+    return { posts, hasNextPage }
   }
 
   // TODO: Update this to send reactions as a number.

@@ -78,6 +78,8 @@ export class ShopService {
 
     if (existing) {
       this.applyTokenCredentials(existing, credentials)
+      existing.isActive = true
+      existing.uninstalledAt = null
       existing.updatedAt = now
 
       const saved = await this.shopRepository.save(existing)
@@ -112,6 +114,66 @@ export class ShopService {
     return saved
   }
 
+  /** True when the shop still has a legacy non-expiring offline token (no refresh token). */
+  isLegacyOfflineToken(shop: Pick<Shop, 'refreshToken'>): boolean {
+    return !shop.refreshToken
+  }
+
+  /**
+   * Shopify Option 2: migrate every active shop that still lacks a refresh token.
+   * Run once before the 2027 deadline or after importing legacy rows.
+   */
+  async migrateAllLegacyOfflineTokens(): Promise<{
+    total: number
+    migrated: number
+    skipped: number
+    failed: Array<{ shopDomain: string; error: string }>
+  }> {
+    const shops = await this.shopRepository.find({
+      select: ['id', 'shopDomain', 'accessToken', 'refreshToken', 'isActive'],
+    })
+    const failed: Array<{ shopDomain: string; error: string }> = []
+    let migrated = 0
+    let skipped = 0
+
+    for (const shop of shops) {
+      if (!shop.accessToken || shop.isActive === false) {
+        skipped += 1
+        continue
+      }
+
+      if (!this.isLegacyOfflineToken(shop)) {
+        skipped += 1
+        continue
+      }
+
+      try {
+        const ok = await this.migrateLegacyTokenForShop(shop)
+        if (ok) {
+          migrated += 1
+          this.logger.log(`[token] bulk migrate ok — shop=${shop.shopDomain}`)
+        } else {
+          failed.push({
+            shopDomain: shop.shopDomain,
+            error: 'migrateLegacyTokenForShop returned false',
+          })
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error'
+        failed.push({ shopDomain: shop.shopDomain, error: message })
+        this.logger.error(`[token] bulk migrate failed — shop=${shop.shopDomain}, error=${message}`)
+      }
+    }
+
+    return { total: shops.length, migrated, skipped, failed }
+  }
+
+  /** Migrates legacy token or refreshes expiring token; returns false if shop has no token. */
+  async ensureExpiringOfflineToken(shopDomain: string): Promise<boolean> {
+    const token = await this.getValidAccessToken(shopDomain)
+    return !!token
+  }
+
   /**
    * Returns a usable Admin API access token, refreshing (or migrating) when needed.
    * Public apps must use expiring offline tokens.
@@ -122,8 +184,12 @@ export class ShopService {
       return null
     }
 
+    if (this.isLegacyOfflineToken(shop)) {
+      const migrated = await this.migrateLegacyTokenForShop(shop)
+      return migrated ? this.revealSecret(shop.accessToken) : null
+    }
+
     const needsRefresh =
-      !shop.refreshToken ||
       !shop.accessTokenExpiresAt ||
       shop.accessTokenExpiresAt.getTime() <= Date.now() + ACCESS_TOKEN_REFRESH_SKEW_MS
 
@@ -149,22 +215,27 @@ export class ShopService {
       }
     }
 
-    // Legacy non-expiring token (or refresh failed): one-time migrate via token exchange.
+    this.logger.error(`[token] no usable token after refresh — shop=${shopDomain}`)
+    return null
+  }
+
+  private async migrateLegacyTokenForShop(shop: Shop): Promise<boolean> {
+    const shopDomain = shop.shopDomain
     try {
       const plainAccess = this.revealSecret(shop.accessToken)
       if (!plainAccess) {
-        return null
+        return false
       }
       const migrated = await this.migrateToExpiringOfflineToken(shopDomain, plainAccess)
       this.applyTokenCredentials(shop, toShopTokenCredentials(migrated))
       shop.updatedAt = new Date()
       await this.shopRepository.save(shop)
       this.logger.log(`[token] migrated to expiring offline token — shop=${shopDomain}`)
-      return this.revealSecret(shop.accessToken)
+      return true
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
       this.logger.error(`[token] migrate to expiring failed — shop=${shopDomain}, error=${message}`)
-      return null
+      return false
     }
   }
 
@@ -264,7 +335,7 @@ export class ShopService {
       return null
     }
 
-    const gid = await this.fetchShopifyShopGid(shopDomain, accessToken)
+    const gid = await this.fetchShopifyShopGid(shopDomain, accessToken, false)
     if (!gid) {
       return null
     }
@@ -361,7 +432,11 @@ export class ShopService {
     return (await response.json()) as ShopifyOfflineTokenResponse
   }
 
-  private async fetchShopifyShopGid(shopDomain: string, accessToken: string): Promise<string | null> {
+  private async fetchShopifyShopGid(
+    shopDomain: string,
+    accessToken: string,
+    retried: boolean,
+  ): Promise<string | null> {
     const apiVersion = this.config.get<string>('shopify.adminApiVersion') ?? '2025-10'
     const endpoint = `https://${shopDomain}/admin/api/${apiVersion}/graphql.json`
 
@@ -380,6 +455,16 @@ export class ShopService {
         this.logger.error(
           `[billing] Admin shop id lookup failed — shop=${shopDomain}, status=${response.status}, body=${body}`,
         )
+        if (
+          !retried &&
+          response.status === 403 &&
+          body.includes('Non-expiring access tokens are no longer accepted')
+        ) {
+          const retryToken = await this.getValidAccessToken(shopDomain)
+          if (retryToken) {
+            return this.fetchShopifyShopGid(shopDomain, retryToken, true)
+          }
+        }
         return null
       }
 

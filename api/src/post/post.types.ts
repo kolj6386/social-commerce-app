@@ -55,9 +55,22 @@ export interface PostWithReactionsAndCommentsDto {
 
 export interface UnapprovedPostDto {
   Id: number
+  ProductId: number
   FirstName: string
   LastName: string
   PostContent: string
   PostCreated: Date
   PostMedia: string
+  ApprovedPost: boolean
+}
+
+export interface AdminPostDto {
+  id: number
+  productId: number
+  firstName: string
+  lastName: string
+  postContent: string
+  postCreated: Date
+  postMedia: string[]
+  approvedPost: boolean
 }

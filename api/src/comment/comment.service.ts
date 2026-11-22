@@ -12,7 +12,8 @@ import { UnapprovedPostsQueryDto } from '../post/dto/unapproved-posts-query.dto'
 import { containsBlockedLanguage } from '../shop/shop-settings'
 import { ShopService } from '../shop/shop.service'
 import { CreateCommentQueryDto } from './dto/create-comment-query.dto'
-import { DeleteCommentQueryDto } from './dto/delete-comment-query.dto'
+import { CommentReviewDto } from './dto/comment-review.dto'
+import { DeleteCommentBodyDto, DeleteCommentQueryDto } from './dto/delete-comment-query.dto'
 import { EditCommentDto } from './dto/edit-comment.dto'
 
 export interface UnapprovedCommentDto {
@@ -20,6 +21,20 @@ export interface UnapprovedCommentDto {
   LastName: string
   CreatedAt: Date
   Content: string
+}
+
+export interface AdminCommentDto {
+  id: number
+  postId: number
+  firstName: string
+  lastName: string
+  content: string
+  createdAt: Date
+  approvedComment: boolean
+  postContent: string
+  postFirstName: string
+  postLastName: string
+  postCreated: Date | null
 }
 
 @Injectable()
@@ -151,5 +166,111 @@ export class CommentService {
     const hasNextPage = pageNumber * resultsPerPage < totalComments
 
     return { comments: comments ?? [], hasNextPage }
+  }
+
+  async getAdminComments(
+    query: {
+      pageNumber?: number
+      resultsPerPage?: number
+      status?: 'all' | 'pending'
+    },
+    storeId: string,
+  ): Promise<{ comments: AdminCommentDto[]; hasNextPage: boolean }> {
+    const pageNumber = query.pageNumber ?? 1
+    const resultsPerPage = query.resultsPerPage ?? 20
+    const pendingOnly = query.status === 'pending'
+
+    const rows = await this.dataSource.query<
+      {
+        Id: number
+        PostId: number | string
+        FirstName: string
+        LastName: string
+        Content: string
+        CreatedAt: Date
+        ApprovedComment: boolean
+        PostContent: string | null
+        PostFirstName: string | null
+        PostLastName: string | null
+        PostCreated: Date | null
+      }[]
+    >(
+      `
+      SELECT
+          c."Id",
+          c."PostId",
+          c."FirstName",
+          c."LastName",
+          c."Content",
+          c."CreatedAt",
+          c."ApprovedComment",
+          p."PostContent",
+          p."FirstName" AS "PostFirstName",
+          p."LastName" AS "PostLastName",
+          p."PostCreated"
+      FROM "Comments" c
+      LEFT JOIN "Posts" p ON p."Id" = c."PostId"
+      WHERE c."ShopId" = $1
+        AND ($2::boolean = false OR c."ApprovedComment" = false)
+      ORDER BY c."CreatedAt" DESC
+      OFFSET $3 LIMIT $4`,
+      [storeId, pendingOnly, (pageNumber - 1) * resultsPerPage, resultsPerPage],
+    )
+
+    const totalResult = await this.dataSource.query<{ count: number }[]>(
+      `
+      SELECT COUNT(*) AS count
+      FROM "Comments"
+      WHERE "ShopId" = $1
+        AND ($2::boolean = false OR "ApprovedComment" = false)`,
+      [storeId, pendingOnly],
+    )
+    const totalComments = Number(totalResult?.[0]?.count ?? 0)
+    const hasNextPage = pageNumber * resultsPerPage < totalComments
+
+    const comments: AdminCommentDto[] = (rows ?? []).map((row) => ({
+      id: Number(row.Id),
+      postId: Number(row.PostId),
+      firstName: row.FirstName ?? '',
+      lastName: row.LastName ?? '',
+      content: row.Content ?? '',
+      createdAt: row.CreatedAt,
+      approvedComment: Boolean(row.ApprovedComment),
+      postContent: row.PostContent ?? '',
+      postFirstName: row.PostFirstName ?? '',
+      postLastName: row.PostLastName ?? '',
+      postCreated: row.PostCreated ?? null,
+    }))
+
+    return { comments, hasNextPage }
+  }
+
+  async approveOrDisapproveComment(dto: CommentReviewDto, shop: string): Promise<boolean> {
+    if (!dto.commentId) return false
+
+    const result = await this.dataSource.query(
+      `
+      UPDATE "Comments"
+      SET "ApprovedComment" = $1
+      WHERE "Id" = $2 AND "ShopId" = $3
+      RETURNING "Id"`,
+      [dto.approved, dto.commentId, shop],
+    )
+
+    return Array.isArray(result) && result.length > 0
+  }
+
+  async adminDeleteComment(dto: DeleteCommentBodyDto, shop: string): Promise<Comment | null> {
+    if (!dto.commentId) return null
+
+    const deleted = await this.dataSource.query<Comment[]>(
+      `
+      DELETE FROM "Comments"
+      WHERE "Id" = $1 AND "ShopId" = $2
+      RETURNING *`,
+      [dto.commentId, shop],
+    )
+
+    return deleted?.[0] ?? null
   }
 }
